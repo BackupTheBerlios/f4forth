@@ -1,2 +1,2 @@
 #! /bin/sh
-DEBUG=no make-f4s uninstall empty install
+DEBUG=no make-f4s uninstall clean install

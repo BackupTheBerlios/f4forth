@@ -28,12 +28,6 @@ re vt100,vt102 by 'xterm' 4.xx:
 	those who care "xy" and "at-xy" were implemented as deferred words such, 
 	that someone else could employ a more sophisticated procedure...
 	
-re {dropd}, {over-}, {>rr}, {base@}, {+bra} &c:
-	some non-standard words included because of very short/fast lo-level code
-	or, of frequent use such that the rsp lo-level word saves some code space
-	branches optimizing also mainly to saveing code space but also gains some 
-	run-time speed.
-
 f4x.scr
 	hi-level extensions, "load"able after file opened w. "using", { 6 load }
 f4c.scr
@@ -75,7 +69,7 @@ for a fully featured, easily extendable system w. basic debugging words.
 Then, from any sub- or, the main dir
 	    DEBUG=no ./make-f4s install
 
-or, if using a different Linux kernel (supplied binary cpl'd for 2.4.19)
+or, if using a different Linux kernel (supplied binary cpl'd for 2.4.22)
 	    DEBUG=no ./make-f4s empty install
 
 which copy the new files, old ones backing up, to the installation dirs.

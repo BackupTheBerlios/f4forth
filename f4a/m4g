@@ -1,2 +1,2 @@
 #! /bin/sh
-DEBUG=yes make-f4s uninstall empty install
+DEBUG=yes make-f4s uninstall empty cfg f4 f4ed check install 

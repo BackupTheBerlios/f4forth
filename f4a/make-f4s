@@ -19,12 +19,17 @@
 #	halten system- rsp -zustands-abhaengige daten, sie werden selbstaetig 
 #	erzeugt, falls sie nicht existieren. nach aenderungen im system (z.b.
 #	neuer kern) sollten diese zwecks erneuerung beim compilieren zuvor 
-#	entfernt oder explicite mit <make-f4s cfg> erzeugt werden.
+#	entfernt oder mit <make-f4s cfg> erzeugt werden: F4 spielt z.B. als
+#	variante, die im linux 2-4-24 erzeugt wurde, nicht im linux 2-4-18!
+#	In juengeren linux-varianten gab es mit aelteren f4-s keine fehler, 
+#	lx 2.6 ging schon mal gut, wegen dessen zustands (neuerungen, die die 
+#	'entwickler' jedoch nicht so recht zu bewaeltigrn scheinen) sind auf 
+#	dauer vorlaeufig noch jedenfalls auch grobe fehler zu erwarten.
 
 # cvs
 #	'./a/commit "(text)"; dies und direkt die cvs-kommandos ausfuehrender 
 #	'user' musz in derselben gruppe sein wie die cvs-files, und jene fuer 
-#	besitzer und gruppe schreibar! - oder user ist 'root'...
+#	besitzer und gruppe schreibbar! - oder user ist 'root'...
 
 # deb und deb-src
 #	fuer gleiche versionsnummern zuerst deb-src ausfuehren
@@ -195,6 +200,8 @@ RMFL="-f"
 #
 CA=cat
 GP=grep
+#	erzeugen von cvslog.html dauert zielich lange, drum nur,
+#	wenn nicht schon vorhanden; z.b. auch nach <make empty>.
 CVS2HTML=${CVS2HTML:-$(cd $TOPDIR;type -p ./a/cvslog2html)}
 CVS2HTML=${CVS2HTML:-$(type -p cvslog2html)}
 [ -z "${CVS2HTML}" ]||CVS2HTML="${CVS2HTML} 2>/dev/null"
@@ -297,6 +304,9 @@ SAVEDIR="/archive/f/${PN}"
 #	the (i.e. my) private upload or, 2ndary archive dir
 UPDIR="/hpg5/up-ib"
 
+#	mit vorgabe durch variable 'cvsroot' ohne einflusz auf systemeinstellungen
+cvsroot=${cvsroot:-${CVSROOT}}
+
 # == config ende ===============================================================
 
 # -- vorgabewerte --------------------------------------------------------------
@@ -334,21 +344,26 @@ do l=${l//\ /};echo "${l%%=*}=${l##*=}";done>${INCDIR}/lxvers
 export KERN=${VERSION}.${PATCHLEVEL}.${SUBLEVEL}${EXTRAVERSION} LXV=${VERSION}${PATCHLEVEL}
 
 CPPDBG=
-#	<cpp> to resolving the #define-s etc.
+#	<cpp> fuer #define u.dgl.
 CPPMDE="${CPPMDE} -P"
 CPPMDE="${CPPMDE} -x assembler-with-cpp"
-#	ohne all den "C"-spezifischen mist
+#	ohne den "C"-schen mist
 CPPMDE="${CPPMDE} -nostdinc -nostdinc++"
 #	auch vordefiniertes 'macro'-zeug lassen wir raus
 CPPMDE="${CPPMDE} -undef"
 #	list '#failed' decision branches after #if &c
 #CPPMDE="${CPPMDE} -ifoutput"
-# 	preventing 'errror's from re-definition w. F4 "linux" vocabulary:
-# 	irgendwo, weiszdergeierwo, definiert diser bek*te c*-krempel einen wert "linux" - siehe <cpp -dM irgendeinname>
+# 	preventing 'errror's from re-definition w. F4 "linux" vocabulary
+# 	irgendwo, weiszdergeierwo, definiert diser bek*te c*-krempel einen wert "linux"
+#	siehe <cpp -dM irgendeinname>: weg damit!
 CPPFLS="${CPPFLS} -Dlinux=\"linux\""
+#	fuer das <file>-kommando
 CPPFLS="${CPPFLS} -DF4MAGIC=\"${F4MG}\""
-CPPFLS="${CPPFLS} -Dlxver=\"${LXV}\""
+#	code-anfang nach ELF/posix/linux (welches? alle? - egal)
 CPPFLS="${CPPFLS} -Dorign=0x08048000"
+#	damit wir wissen, woher wir kommen
+CPPFLS="${CPPFLS} -Dlxver=\"${LXV}\""
+#	ggf. was in's programm reinsoll
 [ "${DEBUG}" == "min" ]&&CPPFLS="${CPPFLS} -D_f4min_"||CPPFLS="${CPPFLS} -U_f4min_"
 
 CPPINC=
@@ -451,6 +466,8 @@ LXPGS=/include/asm-i386/page.h
 # ------------------------------------------------------------------------------
 
 FVERSION="$(./a/relse.sh r.v.x.t)"
+F4DATE=$(date +%d.%m.%Y)
+F4YEAR=$(date +%Y)
 PORT_VER="-a-"
 PACKAGE="linux-${PROGNAM}${PORT_VER}${FVERSION}"
 TARFILE="${SAVEDIR}/${PACKAGE}.${TX}"
@@ -491,7 +508,7 @@ FILES="INSTALL *lsm Makefile b/Makefile i/version.inc i/*data.inc ${GLOFILES}\
 # ------------------------------------------------------------------------------
 # accumulate flag vari
 
-CPPFLS="${CPPFLS} -Dversion=$(${ADMDIR}/relse.sh)"
+CPPFLS="${CPPFLS} -Dversion=$(${ADMDIR}/relse.sh) -Df4date=${F4DATE} -Df4year=${F4YEAR}"
 # 	pass install/doc dirs to F4, for the rsp. words
 [ -n "${IDOCDIR}" ]&&CPPFLS="${CPPFLS} -Didocdir=${DESTDIR}${IDOCDIR}"
 [ -n "${ILIBDIR}" ]&&CPPFLS="${CPPFLS} -Dilibdir=${DESTDIR}${ILIBDIR}"
@@ -584,11 +601,13 @@ f4|${PROGNAM})
 new)	cpl empty all doc
 	;;
 stripped|min)
-	DEBUG=strip cpl f4
+	eval D$$=${DEBUG};DEBUG=strip cpl f4;eval DEBUG=D$$;DEBUG=${!DEBUG}
 	;;
-f4g)	DEBUG=yes cpl f4
+f4g)	#DEBUG=yes cpl f4
+	eval D$$=${DEBUG};DEBUG=yes cpl f4;eval DEBUG=D$$;DEBUG=${!DEBUG}
 	;;
-f4a)	DEBUG=no cpl f4
+f4a)	#DEBUG=no cpl f4
+	eval D$$=${DEBUG};DEBUG=no cpl f4;eval DEBUG=D$$;DEBUG=${!DEBUG}
 	;;
 f4e|f4ed) cpl f4a
 	echo "	cpl 'f4ed'..."
@@ -604,21 +623,26 @@ check)	(
 	    [ "${er}" == "0" ]&&echo -e "\a\ttest passed"||echo -e "\n\a\t\ttest failed w. error code ${er}"
 	    ${RM} ${RMFL} ${LISDIR}/ttt
 	);;
-doc)
-	${ADMDIR}/mg ${DOCDIR} ${GLOFILES}
-	${CVS2HTML} > ${DOCDIR}/${CVSLFILE}||:
-	(
+man)	(
 	    cd ${DOCDIR}
 	    echo '.TH "F4" "1" "F4-'$(${ADMDIR}/relse.sh)'" "hp '$(date +%d.%m.%Y)'" "F4 Forth Compiler/Interpreter"'>${MANFILE}t
 	    n="$(wc -l ${MANFILE} 2>/dev/null)";n="${n// /}";n="${n%%/*}";tail -n$((${n}-1)) ${MANFILE}>>${MANFILE}t
 	    i="$(wc -l ${MANFILE}t 2>/dev/null)";i="${i// /}";i="${i%%/*}";[ $((${n})) -eq $((${i})) ]&&${BM} ${BMFL} ${MANFILE}t ${MANFILE}
 	);;
+glo)	${ADMDIR}/mg ${DOCDIR} ${GLOFILES}
+	;;
+cvf)	[ -r "${DOCDIR}/${CVSLFILE}" ]||${CVS2HTML} > ${DOCDIR}/${CVSLFILE}||:
+	;;
+doc)	cpl glo cvf man
+	;;
+glh)	${ADMDIR}/mh ${DOCDIR} ${GLOFILES}
+	;;# berlios html-file glossary
 clean)	(${RM} ${RMFL} -r \*.o;${RM} ${RMFL} ${BINDIR}/${PROGNAM};cd ${INCDIR};${RM} ${RMFL} ${GFILES})
 	;;
 empty)	cpl clean
 	${RM} ${RMFL} -r \*~ debian/tmp
 	(cd ${LISDIR};${RM} ${RMFL} \*.s \*.lis)
-	${RM} ${RMFL} ${DOCDIR}/INSTALLED
+	${RM} ${RMFL} ${DOCDIR}/INSTALLED ${DOCDIR}/${CVSLFILE}
 	;;
 uninstall)
 	${RM} ${RMFL} ${V} ${DESTDIR}${INSTDIR}/${INSTNAM} \
@@ -658,8 +682,9 @@ idoc)	{ ${INSTALL} -m${LPERM} ${INSTF} ${DOCFILES} ${DESTDIR}${IDOCDIR}/ >/dev/n
 	    echo "$(date) : ${PROGNAM} doc '"${DESTDIR}${IDOCDIR}"'" >>./d/INSTALLED&&
 	    echo -e "\a\t${PROGNAM} doc : ./d/* => '"${DESTDIR}${IDOCDIR}/"'"||:
 	;;
-cvs)	cpl ver cvslog vari
-	${SU} ${ADMDIR}/pc
+cvs)	${RM} ${RMFL} ${DOCDIR}/${CVSLFILE}
+	cpl ver cvslog vari
+	(CVSROOT=${cvsroot} ${SU} ${ADMDIR}/pc)
 	;;
 pak|tar|tarpak)
 	cpl ver cvslog vari
@@ -673,7 +698,7 @@ deb)	[ "$(id -nu)" == "root" ]||{ echo -e "\a\n\tonly 'root' can make the debian
 deb-src)
 	[ "$(id -nu)" == "root" ]||{ echo -e "\a\n\tonly 'root' can make the debian package">/dev/stderr;exit 6; }
 	(   cd ${TOPDIR}
-	    ./a/commit '-cpl sources package-'
+	    cvs -d${cvsroot} commit -m '-cpl sources package-'
 	    cd ..
 	    mkdir deb-src
 	    cd deb-src
@@ -713,6 +738,8 @@ cfg)	local er i n k
 	er=
 	echo -n "# ">${CFG}
 	uname -a>>${CFG}
+	chgrp ${GROUP} ${CFG}
+	${CHMOD} a+r,ug+w ${CFG}
 # vari which must be set to something valid
 	for i in DESTDIR UTLDIR PREFIX DOCPREFIX ASDIR LXSRC LXINC
 	do [ -d "${DESTDIR}${!i}" -a -x "${DESTDIR}${!i}" ]&&echo "${i}=\"\${${i}:-${!i}}\"">>${CFG}||er="${er}\n\t${i}=\"${!i}\" ";done
@@ -734,7 +761,7 @@ cfg)	local er i n k
 	    [ -z "${er}" ]&&echo "${i}=\"${!i}\"">>${CFG}||er="\n\t${i}=\"${er}\""
 	done
 	[ -z "${er}" ]||{ echo -e "\a\nnon-accessible required reference files:${er}"; }
-	#[ -z "${er}${x}" ]||{ rm -f ${CFG};exit 1; }
+	[ -z "${er}${x}" ]||{ rm -f ${CFG};exit 1; }
 	;;
 cvslog)	cvs log -N ${INCDIR}/version.inc >${DOCDIR}/cvslog-lN-${TOPDIR##*/}.txt
 	;;

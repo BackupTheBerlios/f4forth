@@ -8,11 +8,6 @@ f4a - fig-Forth-1.0 style Forth for i386-pc-Linux/ELF
 ->									80 cols |
 #################################################################################
 
-MAJOR CHANGE w. 0-0-17
-	after considerable effort, I got rid of the GASP & MAKE 'utilites' which
-	results to less faults, (much) faster compiling and, easier programming. 
-	cpl by bash script <make-f4s>, which also defines the configureable items
-
 re file QT-license.txt (en), QT-lizenz.txt in ./d directory
 	for Copyright and useage licensing information.
 
