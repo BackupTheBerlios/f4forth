@@ -1,0 +1,561 @@
+
+                A nice bit o' Forth
+                ===================
+
+Hi all, here's some info to go with my liddle Forth (<6K code).
+
+Firstly, I'd like to say that it's all fairly much to the FIG
+Forth-79 standard, so you'll need to be familiar with that, or
+get a book on it?
+
+It multitasks quite happily. With it's default dataspace of
+4000 bytes, I just ran up nine copies on a 128K system...
+
+If you have TK2 or whatever, you can use it as a "filter", etc,
+as I pass across up to eleven channels and the command string
+so they are accessible inside. Until you've gone in and done
+some programming, including probably bending "quit" to get to
+your own code, it'll just read Forth from the input. However,
+this initial state of the program is a neat way to compile code
+and save a new, hoopier, copy of the program.
+
+One warning! Don't go mad playing about with the program if
+you would be embarrased if it makes your QL crash! Once you've
+got something fully tested, fine, but there are virtually NO
+checks on you letting the data or return stacks get out of
+hand, storing data outside the job's memory or even puting in
+assembler routines that crash. 
+
+===============================================================
+
+The dictionary:
+
+A few comments on the dictionary are probably in order. 
+
+Word names can only contain characters up to chr$(127) and are
+completely case-insensitive. Like SuperBasic, I allow the
+dictionary entries to keep the upper/lower case of the word
+name as per when you created it. This makes the dictionary
+searches a tiny bit slower than if I forced one or other case,
+but I think it's nicer this way. (P.S. I just tried defining a
+word with a character > chr$(127), it crashes the m/c!)
+
+The value in the user variable "width" is initially 31. The
+system supports reducing this. Name lookups find a match if
+the length matches and at most the first "width @" characters
+match. If you wanted to define a mass of new words, and didn't
+want the dictionary to get huge, you could make sure your
+words were unique in the first three characters, say, and do
+"3 width !" before wading in.
+
+The structure of created words goes like this:
+
+        name field:
+                first byte, top bit set (128)
+                next bit (64) set if word is immediate
+                next bit (32) set if word is smudged invisible
+                ls 5 bits length of name, as created
+                followed by at most "width @" (at the time of
+                creation, that is) chars, with the top bit
+                (128) of only the last one set
+        link field:
+                word pointer to the name field of the next most
+                recently defined word in this vocabulary
+        code field:
+                word pointer to the assembler code to execute
+                when this word is executed
+        parameter field:
+                zero or more bytes relevent to this word
+
+As it happens, I have made "create" pretty nifty. It has to
+ensure that the link/code/parameter fields are at even
+addresses, but this done with the minimal waste. "here" can
+start out even or odd and the number of bytes of the name to be
+stored may also be even or odd. Only when these "even-ness"'es
+differ does it generate a padding byte. The inbuilt words make
+this padding byte duplicate the byte containing the length, as
+it reduces CET space requirements on my board. "create" also
+duplicates the length byte, but as the word will usually finish
+up de-smudged, and maybe immediate, it'll end up differing...
+
+Just for those of you who don't know, or like me, can't
+remember, 
+    ' <word> gets the parameter field address of <word>.
+From the parameter field address, 
+	nfa,  lfa  and cfa will get you the 
+	name, link and code field addresses,
+respectively. From the 
+	name field address, pfa will get back 
+to the parameter field address.
+
+===============================================================
+
+Vocabularies:
+
+Aye, there's the rub, or somesuch...
+The parameter field of a vocabulary word (e.g. forth) has the
+pointer to the "does>" part of "vocabulary" and then a funny
+little, sort of, word. It's one character name is a space. Its
+link field points to the latest word in this vocabulary. Its
+code field isn't that, it points to the next such word in the
+sequence of vocabularies. voc-link point to the top vocabulary,
+or should do, that is.
+
+P.S. the inbuilt "forget" word knows all about vocabularies...
+up to the point where "current" and "context" differ... which
+I seem to believe can cause a problem... comments?
+
+One final point before leaving dictionaries and vocabularies
+behind... you'll have fun trying to un-compile the inbuilt
+words... they're not very well behaved! You'll find cfa's that
+wander all over the place, unnamed words, and just about all
+the horrors you can imagine. It used to be fairly "standard"
+until I found myself edging over 6144-64, but really wanting to
+put in more code. That's when I started getting devious...
+
+(P.S. Note the 6144-64 I mentioned above... in its pristine
+state, it just sneaks into 12 mdv blocks, or four flp blocks)
+
+===============================================================
+
+Assembler:
+
+There are two basic ways to create words that have assembler
+code in them: "create" and ";code". I haven't built in an
+assembler, so you'll have to assemble your code elsewhere, then
+convert it to a series of numbers to be compiled in.
+
+When "create" is used, the following name is defined and built
+onto the end of the dictionary, up to having compiled a cfa
+(code field address) which points to the subsequent word, which
+is at "here". The definition is hidden, until you "smudge" it.
+
+        hex create noop 4ED3 , smudge
+
+That gets you a no-operation word (pretty useful if you want to
+dig into a definition and wipe out the odd instruction...).
+Note the "4ED3"... this is "jmp (a3)" which is the way to get
+out of assembler code (unless you're being really devious!).
+
+The ";code" method is for constructing word defining words.
+
+        : 2constant constant , ;code 2F12 , 4ED3 ,
+
+That's a definition for setting up 32-bit constants.
+
+===============================================================
+
+Register usage:
+
+I've stuck to a set of registers that enable the interpreter
+to be pretty efficient. If you put in assembler code, you
+should find that you rarely have to save/restore anything, with
+the expeption that a small number of trap calls destroy ones I
+need preserved (not many, thank goodness!). Some vectors do
+destroy a load of registers, in particular, a3 gets zapped a
+fair amount, so be careful!
+
+d0-d3/a0 are frequently used, destroy them as you like
+a1 is the address of entered code and may be destroyed at will
+d4-d6 are never touched! Your code routines can communicate?
+d7.msw is zeroed at boot/cold/warm start, then never disturbed 
+d7.lsw is up, the userarea pointer, needing offset by a6
+a2 is w, the parameter field pointer (user code can destroy)
+a3 is the jump address to leave code (do a jmp (a3))
+a4 is ip, the next instruction pointer
+a5 is rp, the return stack pointer
+a6 is the program base address
+a7 is sp, the data stack pointer
+
+The actual code executed at (a3) goes like this:
+
+        move.w (a4)+,a2 pick up relative cfa, step ip
+        add.l a6,a2     get absolute cfa
+        move.w (a2)+,a1 pick up cf, leave absolute pfa in w
+        add.l a6,a1     make cf absolute
+        jmp (a1)        go do the code
+
+This is the entire interpreter, in a sense, if you include the
+"jmp (a3)" from the end of the code it finds at (a1).
+
+Taking the "noop" word as an example, which adds just the jump,
+you can see that the essential overhead per word of running the
+"threaded" code is six quick instructions, with two memory
+fetches.
+
+Nesting down inside a ":" definition is pretty cheap too.
+Say the definition was just ": fred ;", then what happens when
+"fred" is supposed to be executed as part of another word is
+the above, which will get to executing the code recorded at the
+cfa of "fred". This does:
+
+        sub.w a6,a4     make ip relative
+        move.w a4,-(a5) stack return address at rp
+        move.l a2,a4    set new ip as pfa
+        jmp (a3)        go back to interpreting the code
+
+In this case, the next thing at (a4) will be the word compiled
+by ";". The interpreter bit gets done again and the code does:
+
+        move.w (a5)+,a4 pop the return from rp
+        add.l a6,a4     make the popped ip absolute
+        jmp (a3)        back to interpreting, yet again
+
+So, if we defined ": jim fred fred fred fred ;", interpreting
+each "fred" will take a net 17 machine instructions, including
+just 5 memory fetches and one store. Doing a little timing
+test of the above sort of thing, I got a measured time for one
+execution of "fred" as about 70 microseconds... very strange!
+This seems to imply that each m/c instruction takes an average
+of 30 cycles to execute! My calculations must be off?
+
+===============================================================
+
+Memory layout (starting from base of program, i.e. a6):
+
+      0-here    Dictionary
+   here-pad     Used by 'word', etc
+    pad-        Used by <#...#> formatting routines.
+                'w"' stores QDOS string here when interpreting.
+       -s0(tib) The data stack. a7(sp) is used in here.
+(s0)tib-        The terminal input buffer.
+                'query' uses up to 82 bytes here.
+       -r0(up)  The return stack. a5(rp) is used in here.
+                r0=tib+256 bytes.
+ (r0)up-        64 byte user area.
+                (a6,d7.w) is how this is addressed.
+  first-limit   Eight buffers. Each has block number, 64 bytes
+                of data and two nulls. The top bit of the block
+                number is set if the block has been "update"'d.
+                The next bit is clear for "dr0" blocks or set
+                for "dr1" blocks.
+  limit-        16 longwords of the channel table.
+                Each is a QDOS channel ID, or -1 if not in use.
+  limit+64      The command string, word prefixed with length.
+                E.g. doing the TK2 command EX QF;"Yes" will
+                result in the word at limit+64 being three and
+                the bytes at limit+66 will be the 'Y', the 'e'
+                and the 's'. There will be an undefined byte at
+                limit+69, needed by QDOS to get back on a word
+                boundary. The absolute top of the program's
+                dataspace will be limit+70.
+
+===============================================================
+
+Going back to the low addresses, a few are of extreme interest!
+The 12 bytes starting at byte twelve defined the program's
+default window (if no channels are passed in by EX). They are:
+
+        12: border colour (2, red)
+        13: border width (1)
+        14: paper (2, red)
+        15: ink (7, white)
+        16-17: width (448 = 6*74 (or 12*37) + 2*2)
+        18-19: height (202 = 10*20 + 2*1)
+        20-21: left hand edge (32 = (512-448)/2)
+        22-23: top edge (14 = 256 - 4*10 - 202)
+
+If you want up to a 14 char job name, instead of the paltry two
+characters I have allowed for (squashing Forth down as compact
+as I can make it!), it's a fairly simple matter to shift the
+default screen info elsewhere. There is a single reference to
+it from the word at 46-47 (the back end of an lea instruction).
+E.g. compile your new screen block, then "here 12 - 46 !".
+
+The next fourteen bytes are used by save" as the file header.
+It writes "here" into the second word (i.e. the lsw of the
+longword file length), but otherwise expects the rest to be as
+is wanted. The prime interest here will be to adjust the
+dataspace of the saved image. This may be found at location 32.
+The default I use is 4000, but it can go down to about 1700,
+assuming you don't use much stack/pad space or define any new
+words... I'd say a minimum of 2K for messing about, 6K if you
+get pretty serious.
+
+        24-27: File length ("here")
+        28: Access code (0, Nobody uses this?)
+        29: File type (1, executeable)
+        30-33: dataspace (4000)
+        34-37: more type dependant info (0)
+
+The second word of type dependant info may be be used in
+Minerva as a start address... I think this was what was
+originally intended here...
+
+A word of warning!
+Do not try to save with a dataspace greater than 32K-"here", as
+it won't work! In fact, it'll crash the system should you EXEC
+the program! I have an absolute upper limit of 32K for the
+overall size of the program, as I stick to the simplest
+addressing scheme which results in negative addresses going off
+the bottom of the code (which can be used to access the job
+header, as it happens... more about this later). Also, if you
+want to access the passed channels and command string, make it
+somewhat less than the maximum, as these get allocated by the
+system above the requested dataspace and could finish up out of
+my addressing range.
+
+Now, the goodies! Although we have a nice channel table built
+into the system, it's really nice to be able to redirect
+channels from time to time. In paticular, the chain" word just
+redirects the input to the file you specify and any error, in
+particular "end of file", puts it back. This is acheived by the
+next few bytes, each of which holds a channel number (0..15).
+
+        38: for "dr0" accesses ( r/w, etc )
+        39: for "dr1" accesses ( ditto, plus save" and chain" )
+        40: standard input ( expect, key, ?terminal, etc )
+        41: standard output ( emit, type, etc )
+        42: reserved for user code, e.g. input or update file
+        43: reserved for user code, e.g. output or work file
+
+The above are preset as 14, 15, 0, 1, 2 and 3. The system only
+ever writes one of these in one instance. If "expect" gets an
+error, it sets location 40 to zero. This will normally be
+expected to happen when chain" gets to end of file, and should
+get control back to reading from the original(?) standard
+input. There is one other instance where the redirection is
+bypassed... should open", chain" or r/w get an error, they use
+"report" directed at channel one, as this is hopefully more
+useful than bunging output at a printer!. They then "quit".
+
+===============================================================
+
+Handling of TK2 "EX" (and QLiberator "QX") parameters:
+These commands allow you to pass channels and a text string
+into a job. There has always been a standard in the QL for
+doing this, i.e. on entry the stack pointer (a7) points to a
+word count of the number of channels, followed by those
+channels' longwod IDs, followed by a word count of the string,
+the bytes of the string, and a padding byte if the length was
+not even. Now, to be hopefully fairly consistent/helpful, I set
+up the channel table like this:
+
+1) If no channels are passed, the defualt screen is opened and
+        its ID is recorded in both entry 0 and 1.
+2) If just one channel is passed, it is entered as 0 and 1.
+3) If just two channels are passed, they become 0 and 1.
+4) If more than two come in, the first two become 0 and 1 as
+        above, entry 2 is skipped and the rest go to entries
+        3 onward. I only cope with a maximum of 11 passed
+        channels, so it'll be disaster time if you pass more!
+
+Channels 2, 12 and 13 are totally spare, with the redirect byte
+at location 42 set up to point at channel 2.
+
+Channel 3 has the redirect byte at location 43 set to point at
+it and would typically be used as some sort of secondary output
+(TK2 will open it overwrite, as it does for all but the first).
+
+Channel 14 is initially what location 38 points at, and one
+        expects the "dr0" screen file to be opened here. 
+
+Channel 15 is the initial location 39 value, and a "dr1" screen
+        file will access this. As it is most unlikely that
+        you'd want to mix screen file access with save" and
+        chain" type operations, they borrow the channel pointed
+        to by location 39 (i.e. this one to start with).
+        N.B. chain" is a pretty dumb word, and DOESN'T get too
+        clever... no attempt is made to close the channel it
+        opens (which may give you a chance to see it there was
+        a problem, e.g. a line of more than 80 chars). E.g. a
+        "15 close" when you find a chance is the thing to do,
+        or even "39 c@ close" if you're playing it clever, but
+        don't put it on the same line as the chain", or it will
+        have no effect!
+
+===============================================================
+
+The non standard FIG Forth-79 bits:
+
+I found that I got annoyed when I tried to use the construct
+" 4 -2 do ... loop " and discovered that it would only do i=-2
+and stop. I'm not totally certain of what the standard really
+wants to happen, but in the interest of my sanity, I have the
+"loop" word now functionally identical to "1 +loop". The
+"+loop" word now always adds the specified increment to the
+current index, then does a signed comparison of the updated
+index value with the limit. If the increment is greater than or
+equal to zero the loop is exited if the index is now greater
+than or equal to the limit. If the increment is less than zero,
+the loop is exited if the index is now less than or equal to
+the limit. All the internal routines seem quite happy with this
+arrangement. I did look at the Forth-83 setup, but that wants a
+fair amount of extra code to get it that way, and I'm frugal.
+
+Also, the words "0=" and "not" are not synonyms. "0=" finishes
+with a logical (0/1), but "not" will give the one's complement.
+
+A little note, there is some confusion over "variable", I seem
+to find. At Forth-79 level, it requires an initial value. I.e.
+you should do " 0 variable fred ". If you don't like having to
+give the initial value, you can always define:
+
+        : variable 0 variable ;
+
+If you hate getting the warning, you can do tricks like
+
+        ascii c ' variable nfa 1+ c! : variable 0 cariable ;
+
+Now's as good a time as any to mention what you can get at in
+the job header by using negative addresses.
+This is really dirty coding, but can be interesting.
+The job header is the 104 bytes below 0. The first word is the
+overall length of the job, and the following:
+
+        limit 64 + dup @ 2+ + -102 @ - .
+
+should print 0, or 1 if the command string was an odd length.
+One thing you might like to get hold of is the program base
+address. As this is in your own a6, -14 @ -16 @ will get it.
+Your owner and the job waiting on you are at -100 and -80.
+You can do -85 c@ to find your own priority, but that's about
+the limit. The rest of the job header is for experts(?).
+It's pretty dangerous to store into your header. Setting the
+registers (-72 to -3) is irrelevent, as they'll be overwritten
+as soon as you're rescheduled. The word at -2 might be used by
+Minerva, unless someone has beaten me to it.
+
+A set of words I removed(!) give the most flexible "case"-type
+construct I can think of. These are "sel", "on", "endon" and
+"endsel". What you keep on the stack is entirely up to you.
+The "on" expects you to have left a non-zero on the stack if
+you want the words between it and the CORRESPONDING "endon" to
+be executed, followed by a jump past the "endsel". If none of
+the "on"'s get done, the bit before the "endsel" is executed.
+These constructs can be nested!
+
+        : sel csp @ !csp six ; immediate
+        : on 6 ?pairs [compile] if 3 + ; immediate
+        : endon 3 - [compile] else 2+ 2+ ; immediate
+        : endsel 6 ?pairs begin sp@ csp @ < while
+         2 [compile] then repeat csp ! ; immediate
+
+To get the conventional "case", define it by:
+
+        : case [compile] sel ; immediate
+        : of compile over compile =
+         [compile] on compile drop ; immediate
+        : endof [compile] endon ; immediate
+        : endcase compile drop
+         [compile] endsel ; immediate
+
+With a little cheek, and care, you can mix the constructs.
+On thinking about it, how about:
+
+        : (toof) over - >r over swap - r> u< ;
+        : toof compile (toof)
+         [compile] on compile drop ; immediate
+
+That lets you do: case x lower upper toof ... endof endcase.
+
+===============================================================
+
+QDOS access:
+
+open            addr n1 n2 --- d                  "open"
+
+addr must be even. At addr there should be the file name length
+in a word. At addr+2 are the characters of the file name to be
+opened. n1 is usually the access type (0=old, 1=in, 2=new,
+3=over or 4=dir). In the case of the filename "pipe_", n1 is
+the QDOS channel number (lsw of ID) of the other end of the
+pipe. n2 (0..15) is the channel slot to be used. If the channel
+slot is in use, it is closed before attemping to open the new
+file. d is the QDOS error code ( 0.0 = no error ).
+
+close           n ---                            "close"
+
+Channel n is closed and the slot set to minus one.
+
+report          d n ---                         "report"
+
+d is a QDOS error code whose text is printed to channel n.
+
+(w")            --- addr                 "paren-w-quote"
+
+This is the run time routine compiled by w" and it leaves addr,
+the address of the character count word preceeding the
+characters at addr+2.
+
+w"              --- addr                I      "w-quote"
+                --- ( compiling )
+
+Used in the form:
+        w" ccc"
+When executing, ccc is moved to pad+2 and pad is set to the
+length of ccc. pad is returned as addr.
+When compiling, the (w") word is compiled, followed by the
+length and text. A padding byte is also compiled if the length
+is odd.
+
+save"           ---                     I   "save-quote"
+
+Used in the form:
+        save" ccc"
+The current Forth image, from 0 to here-1, is saved as an
+executeable file with the dataspace set as per the contents of
+word 32 (or rather, the longword at 30). The channel pointed
+to by the byte at 39 is closed as a result of this.
+Even save" ser" works! N.B. all the normal guff should be done
+prior to the save, e.g.: 
+                0 warning ! forth definitions decimal
+           latest 12 +origin ! ( top nfa )
+             here 28 +origin ! ( fence )
+             here 30 +origin ! ( dp )
+     ' newvoc 6 + 32 +origin ! ( voc-link )
+             here fence !
+        save" flp1_Forth_newvoc"
+
+chain"          ---                     I  "chain-quote"
+
+Used in the form:
+        chain" ccc"
+The file ccc is opened for input, using the channel slot
+pointed to by location 39. This channel slot is then stored in
+location 40, so causing the next, and subsequent lines to be
+read from the file. On any error in the word expect, location
+40 is cleared thus hopefully getting back to the standard
+input. The channel opened by chain" is not closed.
+Used in conjuction with save", you can compile and save a new
+program conveniently if you change the last line to be:
+        1 40 ! save" flp1_Forth_voc" 39 c@ close
+I.e. make sure you reset stdin/out BEFORE the save, and to be
+tidy, close yourself as well.
+
+bye             ---                                "bye"
+
+The job is terminated. (Well, you gotta go sometime!)
+
+===============================================================
+
+Footnote:
+
+I found a nice trick the other day. Even if you don't have a
+straightforward text editor, you can use SuperBasic! What you
+do is to write a SuperBasic program consisting of just REM's
+with your Forth code as the comments(sic). You then define
+a word "REMark" and load your program like this:
+
+        : REMark state @ if -4 allot else drop then ; immediate
+        : it ; ( I like saying "forget it" if thing go awry )
+        chain" flp1_clever_bas"
+        39 c@ close ( do this at some point or other... )
+
+I like it! The REMark word chucks away the line number for you.
+This works great, provided:
+
+ 1) You avoid line number below 3, and any further numbers you
+        have given direct definitions of.
+
+ 2) You don't change "base" to less than 10 (unless you get
+        really careful!).
+
+Even neater, maybe, is to have the top line of your file say
+"100 REMark : it ;" and the last be "900 REMark 39 c@ close".
+You can even put genuine SuperBasic after the close line!
+
+                Best of luck from,
+
+                        Lau, the Forth tinkerer...
+

@@ -1,0 +1,417 @@
+# [hp 02-03-00 l4@lxhp.in-berlin.de] : GNU licensed : asm.syntax for "mc" (on blue background)
+# for lib4th, 6/2000 by h-peter recktenwald <l4@lxhp.in-berlin.de>
+# Find a very lazy (sort of) documentation to syntax highlighting with man mcedit (1).
+
+# store this file to syntaxfiles in /usr/lib/mc/, and add to $HOME/.cedit/Syntax:
+#    file ..\*\\.(s|S|asm|inc|mac|lis)$ nasm\sProgram
+#    include asm.syntax
+
+# colours made for black background
+# which to achieve I didn't find any other means than re-mapping the console colours:
+#--------------------------------------------------------------------------------------
+#	#!/bin/sh
+#	echo -e "\e]P40f0f0f\e]P0000038"	# "blue" => black, "black" => dark blue
+#	[ -z "${1}" ]||echo -e "\e]P40000a0\e]P0000000"	# "black", "blue"  => true colr
+#--------------------------------------------------------------------------------------
+# names:
+#	black gray lightgray white
+#	red brightred yellow green brightgreen
+#	blue brightblue cyan brightcyan magenta brightmagenta
+#
+# visible on black bg:
+#	white yellow green cyan
+#	lightgray brightred brightgreen
+#	brightblue brightcyan brightmagenta
+#--------------------------------------------------------------------------------------
+
+context default white
+    spellcheck
+# <spellcheck> segfaults w. redhat6.0/BlackCat linux 2.2.5 distr.
+
+#-------- test ------------------------------------------------------------------------
+#	keyword whole de black/		# black
+#	keyword whole de gray/		# gray
+#	keyword whole de red/		# red
+#	keyword whole de blue/		# blue
+#	keyword whole de magenta/	# magenta
+#--------------------------------------------------------------------------------------
+#	keyword whole de white/		# white
+#	keyword whole de yellow/	# yellow
+#	keyword whole de brightgreen/	# brightgreen
+#	keyword whole de green/		# green
+#	keyword whole de cyan/		# cyan
+#	keyword whole de brightcyan/	# brightcyan
+#	keyword whole de brightblue/	# brightblue
+#	keyword whole de brightmagenta/	# brightmagenta
+#	keyword whole de brightred/	# brightred
+#	keyword whole de lightgray/	# lightgray
+#--------------------------------------------------------------------------------------
+
+# yellow: vari/-groups (& re below)
+    keyword (*(*)*)	brightgreen/16
+    keyword (*(*(*)*)*)	brightgreen/16
+    keyword [*]		brightcyan/14
+    keyword (*)		brightgreen/16
+    keyword %{*}	brightgreen/16
+    keyword {*}		brightgreen/16
+
+# brightred: definitions
+    keyword whole %include brightred/23
+    keyword whole %assign brightred/23
+    keyword whole %define brightred/23
+    keyword whole %undef brightred/23
+    keyword whole %rep brightred/23
+    keyword whole %rotate brightred/23
+    keyword whole %exitrep brightred/23
+    keyword whole %endrep brightred/23
+    keyword whole %error brightred/23
+    keyword whole %iassign brightred/23
+    keyword whole %idefine brightred/23
+    keyword whole %line brightred/23
+    keyword whole %clear brightmagenta/23
+# nasm 98e (Zabolotny/linuxgames)
+    keyword whole %xdefine brightred/23
+    keyword whole %ixdefine brightred/23
+
+# brightcyan: the struc construct
+    keyword whole struc brightcyan/14
+    keyword whole at brightcyan/14
+    keyword whole endstruc brightcyan/14
+    keyword whole istruc brightcyan/14
+    keyword whole iend brightcyan/14
+# brightgreen: nested struc defn [nasm:hp'3/00]
+    keyword whole istrucb brightgreen/14
+    keyword whole iatb brightgreen/14
+    keyword whole iendb brightgreen/14
+
+# brightmagenta: diverse
+    keyword whole %pop brightmagenta/23
+    keyword whole %push brightmagenta/23
+    keyword whole %repl brightmagenta/23
+
+# brightmagenta: structured data
+    keyword whole %ifctx brightmagenta/23
+    keyword whole %ifnctx brightmagenta/23
+    keyword whole %elifctx brightmagenta/23
+    keyword whole %elifnctx brightmagenta/23
+    
+    keyword whole %if brightmagenta/23
+    keyword whole %else brightmagenta/23
+    keyword whole %elif brightmagenta/23
+    keyword whole %endif brightmagenta/23
+
+    keyword whole %ifid brightmagenta/23
+    keyword whole %elifid brightmagenta/23
+    keyword whole %ifnid brightmagenta/23
+    keyword whole %elifnid brightmagenta/23
+
+    keyword whole %ifidn brightmagenta/23
+    keyword whole %elifidn brightmagenta/23
+    keyword whole %ifidni brightmagenta/23
+    keyword whole %elifidni brightmagenta/23
+
+    keyword whole %ifnidn brightmagenta/23
+    keyword whole %elifnidn brightmagenta/23
+    keyword whole %ifnidni brightmagenta/23
+    keyword whole %elifnidni brightmagenta/23
+
+    keyword whole %ifdef brightmagenta/23
+    keyword whole %elifdef brightmagenta/23
+    keyword whole %ifndef brightmagenta/23
+    keyword whole %elifndef brightmagenta/23
+
+    keyword whole %ifeq brightmagenta/23
+    keyword whole %elifeq brightmagenta/23
+    keyword whole %ifneq brightmagenta/23
+    keyword whole %elifneq brightmagenta/23
+
+    keyword whole %ifstr brightmagenta/23
+    keyword whole %elifstr brightmagenta/23
+    keyword whole %ifnstr brightmagenta/23
+    keyword whole %elifnstr brightmagenta/23
+
+    keyword whole %ifnum brightmagenta/23
+    keyword whole %elifnum brightmagenta/23
+    keyword whole %ifnnum brightmagenta/23
+    keyword whole %elifnnum brightmagenta/23
+
+    keyword whole %macro brightmagenta/23
+    keyword whole %endm brightmagenta/23
+    keyword whole %endmacro brightmagenta/23
+    keyword whole %imacro brightmagenta/23
+    keyword .nolist brightmagenta/23
+
+## not <tab> highlighting background "blue/6"
+    keyword linestart \t lightgray/13 blue/6
+
+# yellow: markup, additional pseudo ops
+    keyword whole START		yellow/24
+    keyword whole SEGMENT	yellow/24
+    keyword whole SECTION	yellow/24
+    keyword whole segment	yellow/24
+    keyword whole section	yellow/24
+    keyword whole CODESEG	yellow/24
+    keyword whole DATASEG	yellow/24
+    keyword whole UDATASEG	yellow/24
+    keyword whole END		yellow/24
+    keyword whole BEGIN_ELF	yellow/24
+    keyword whole ELF_DATA	yellow/24
+    keyword whole END_ELF	yellow/24
+    keyword whole ELF_ISTRUC	yellow/24
+    keyword whole ELF_BSTRUC	yellow/24
+    keyword whole ELF_AT	yellow/24
+    keyword whole ELF_IEND	yellow/24
+    keyword whole ELF_IAT	yellow/24
+    keyword whole I_STRUC	yellow/24
+    keyword whole I_END		yellow/24
+    keyword whole PROC		yellow/24
+    keyword whole ENDP		yellow/24
+
+# lib4th
+# magenta: admin, green: code, yellow: macroes
+    keyword _nolist		brightmagenta/23
+    keyword whole a		brightmagenta/23
+    keyword whole A		brightmagenta/23
+    keyword whole N		brightmagenta/23
+    keyword whole GA		brightmagenta/23
+    keyword whole dataptr	brightgreen/16
+    keyword whole codeptr	brightgreen/16
+    keyword whole datatop	brightgreen/16
+    keyword whole codetop	brightgreen/16
+    keyword whole databot	brightgreen/16
+    keyword whole codebot	brightgreen/16
+    keyword whole TOS		brightgreen/16
+    keyword whole TOSPOP	brightgreen/16
+    keyword whole TOSPULL	brightgreen/16
+    keyword whole TOSPUSH	brightgreen/16
+    keyword whole __LIB4TH	yellow/24
+    keyword whole GETGOT	yellow/24
+    keyword whole C		yellow/24
+    keyword whole M		yellow/24
+    keyword whole TICK		yellow/24
+    keyword whole ACTV4TH	yellow/24
+    keyword whole CLON4TH	yellow/24
+    keyword whole CREA4TH	yellow/24
+    keyword whole START4TH	yellow/24
+    keyword whole END4TH	yellow/24
+    keyword whole uvuv		yellow/24
+    keyword whole L4PN		yellow/24
+    keyword whole L4DP		yellow/24
+
+# nasm, asmutils
+    keyword whole .data		yellow/24
+    keyword whole .text		yellow/24
+    keyword whole .bss		yellow/24
+    keyword whole .DATA		yellow/24
+    keyword whole .TEXT		yellow/24
+    keyword whole .BSS		yellow/24
+    keyword whole global	yellow/24
+    keyword whole extern	yellow/24
+    keyword whole common	yellow/24
+    keyword whole org		yellow/24
+    keyword whole absolute	yellow/24
+
+    keyword whole align		yellow/24
+    keyword whole alignb	yellow/24
+
+    keyword whole NULL		yellow/24
+    keyword whole __\{abefnrstv\} yellow/24
+    keyword whole EOL		yellow/24
+    keyword whole STDIN		yellow/24
+    keyword whole STDOUT	yellow/24
+    keyword whole STDERR	yellow/24
+    keyword whole TRUE		yellow/24
+    keyword whole FALSE		yellow/24
+
+    keyword whole EMPTY		brightgreen/16
+    keyword whole _mov		brightgreen/16
+    keyword whole _cmp		brightgreen/16
+    keyword whole _or		brightgreen/16
+    keyword whole _a\{dn\}d	brightgreen/16
+    keyword whole _sub		brightgreen/16
+    keyword whole _xor		brightgreen/16
+    keyword whole _xchg		brightgreen/16
+    keyword whole _push		brightgreen/16
+    keyword whole invoke	brightgreen/16
+
+# program flow (risc opr, at most)
+    keyword whole j\{abceglopsz\} brightcyan/16
+    keyword whole j\{abglp\}e brightcyan/16
+    keyword whole jn\{abceglopsz\} brightcyan/16
+    keyword whole jn\{abgl\}e brightcyan/16
+    keyword whole jpo	brightcyan/16
+    keyword whole call	brightcyan/16
+    keyword whole jmp	brightcyan/16
+# program flow (non-risc opr, at most)
+    keyword whole jcxz	cyan/16
+    keyword whole jec	cyan/16
+    keyword whole ret	cyan/16
+# private, in "system.inc"
+    keyword whole jr	brightcyan/16
+    keyword whole jmps	brightcyan/16
+    
+# private, in "debug.inc"
+    keyword whole DUMP	yellow/24
+    keyword whole PFBIN yellow/24
+    keyword whole PFSYM yellow/24
+    keyword whole PRNUM yellow/24
+    keyword whole PRBIN yellow/24
+    keyword whole PRSTG yellow/24
+    keyword whole PRTXT yellow/24
+    keyword whole WKY   yellow/24
+    keyword whole dbcons brightgreen/16
+    keyword whole dbmrg brightgreen/16
+    keyword whole mdump brightgreen/16
+    keyword whole pbits brightgreen/16
+    keyword whole perr\{mns\} brightgreen/16
+    keyword whole psbits brightgreen/16
+    keyword whole pnum  brightgreen/16
+
+# amd NON-risc86 opr
+    keyword whole aaa lightgray/6
+    keyword whole aad lightgray/6
+    keyword whole adc lightgray/6
+    keyword whole arpl lightgray/6
+    keyword whole bound lightgray/6
+    keyword whole bsf lightgray/6
+    keyword whole bsr lightgray/6
+    keyword whole bt lightgray/6
+    keyword whole bt\{crs\} lightgray/6
+    keyword whole call lightgray/6
+    keyword whole cbw lightgray/6
+    keyword whole cl\{cdi\} lightgray/6
+    keyword whole cmc lightgray/6
+    keyword whole cwde lightgray/6
+    keyword whole cmps\{bwd\} lightgray/6
+    keyword whole cmpxchg lightgray/6
+    keyword whole cmpxchg8b lightgray/6
+    keyword whole cpuid lightgray/6
+    keyword whole cwd lightgray/6
+    keyword whole cdq lightgray/6
+    keyword whole da\{as\} lightgray/6
+    keyword whole div lightgray/6
+    keyword whole idiv lightgray/6
+    keyword whole imul lightgray/6
+    keyword whole in lightgray/6
+    keyword whole in lightgray/6int03 lightgray/6
+    keyword whole invd lightgray/6
+    keyword whole invlpg lightgray/6
+    keyword whole lahf lightgray/6
+    keyword whole lar lightgray/6
+    keyword whole lds lightgray/6
+    keyword whole l\{efgs\}s lightgray/6
+    keyword whole l\{gil\}dt lightgray/6
+    keyword whole lmsw lightgray/6
+    keyword whole loop\{ez\} lightgray/6
+    keyword whole loopn\{ez\} lightgray/6
+    keyword whole ltr lightgray/6
+    keyword whole lsl lightgray/6
+    keyword whole mul lightgray/6
+    keyword whole out lightgray/6
+    keyword whole pop\{af\} lightgray/6
+    keyword whole pop\{af\}d lightgray/6
+    keyword whole push\{af\} lightgray/6
+    keyword whole push\{af\}d lightgray/6
+    keyword whole r\{co\}\{lr\} lightgray/6
+    keyword whole sahf lightgray/6
+    keyword whole sbb lightgray/6
+    keyword whole scas\{bwd\} lightgray/6
+    keyword whole set\{abceglopsz\} lightgray/16
+    keyword whole set\{abglp\}e lightgray/16
+    keyword whole setn\{abceglopsz\} lightgray/16
+    keyword whole setn\{abgl\}e lightgray/16
+    keyword whole setpo lightgray/16
+    keyword whole s\{gi\}dt lightgray/6
+    keyword whole sh\{lr\}d lightgray/6
+    keyword whole st\{cdir\} lightgray/6
+    keyword whole syscall lightgray/6
+    keyword whole sysenter lightgray/6
+    keyword whole sysexit lightgray/6
+    keyword whole sysret lightgray/6
+    keyword whole ud\{12\} lightgray/6
+    keyword whole ver\{rw\} lightgray/6
+    keyword whole wait lightgray/6
+    keyword whole wbindv lightgray/6
+    keyword whole xadd lightgray/6
+
+    keyword whole fbld lightgray/6
+    keyword whole fbstp lightgray/6
+    keyword whole fclex lightgray/6
+    keyword whole fincstp lightgray/6
+    keyword whole finit lightgray/6
+    keyword whole fldcw lightgray/6
+    keyword whole fptan lightgray/6
+    keyword whole frstor lightgray/6
+    keyword whole fsave lightgray/6
+    keyword whole fsincos lightgray/6
+    keyword whole fstcw lightgray/6
+    keyword whole fstenv lightgray/6
+    keyword whole fstw lightgray/6
+    keyword whole fxtract lightgray/6
+    keyword whole fwait lightgray/6
+
+    keyword whole emms lightgray/6
+    keyword whole femms lightgray/6
+# lib4th
+    keyword whole callx lightgray/6
+    keyword whole jmpx lightgray/6
+
+# other
+    keyword <\{0123456789\}> brightblue/14
+    keyword = yellow/24
+    keyword ^ yellow/24
+    keyword & yellow/24
+    keyword | yellow/24
+    keyword << yellow/24
+    keyword >> yellow/24
+    keyword < yellow/24
+    keyword > yellow/24
+    keyword , yellow/24
+    keyword % brightgreen/24
+    keyword %% brightgreen/24
+    keyword \+ yellow/24
+    keyword - yellow/24
+    keyword \/ yellow/24
+    keyword \* yellow/24
+    keyword \\\n yellow/24
+    keyword ;;* brightmagenta/23 black/0
+    keyword ;;*; brightmagenta/23 black/0
+
+# private textmarkers
+    keyword whole :+: brightred/23 black/0
+
+# labels w. ":"
+    keyword linestart \{.%ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_\}*: lightgray/11
+    keyword whole : yellow/24
+    keyword whole . yellow/24
+
+# comments markup
+#    keyword wholeleft ..x.. brightmagenta/23 black/0
+    keyword wholeleft ;? brightmagenta/23 black/0
+    keyword wholeleft ;> brightmagenta/23 black/0
+    keyword wholeleft ;< brightmagenta/23 black/0
+
+# green: comment
+context ; \n green/6
+    keyword whole GNU brightred/23
+    keyword whole GPL brightred/23
+    keyword whole QT  brightred/23
+    keyword whole PUBLIC brightred/23
+    keyword whole Q  brightred/23
+    keyword whole \{Ll\}izenz brightred/23
+    keyword whole \{Ll\}icense brightred/23
+    keyword whole LICENSE brightred/23
+    keyword whole (C) brightred/23
+    keyword whole $Id brightred/23
+    keyword whole :+: brightred/23 black/0
+    keyword wholeright <; brightmagenta/23 black/0
+    keyword wholeright >; brightmagenta/23 black/0
+
+# private textmarkers
+    keyword whole :+: brightred/23 black/0
+
+context \" \" brightgreen/16
+    keyword whole :+: brightred/23
+
+context \' \' brightgreen/16
+

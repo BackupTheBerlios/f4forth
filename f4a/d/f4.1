@@ -1,0 +1,132 @@
+.TH "F4" "1" "F4-0.2.0.14" "hp 04.02.2004" "F4 Forth Compiler/Interpreter"
+.SH "NAME"
+\fIf4a\fB       \- Forth Compiler/Interpreter\fR
+.br 
+\fIf4g\fB       \- un-stripped variant for asm level debugging\fR
+.br 
+.SH "SYNTAX"
+.LP 
+\fIf4a\fB [ (forth words) ]\fP
+.br 
+\fIf4a \fB\<\fRstdin stdout\fB> [ (forth words) ]\fR
+.br 
+\fRstdin \fB|\fI f4a \fB [ (forth words) ] |\fR stdout\fR
+.LP 
+either i/o combination may be used
+.br 
+i/o defaults to console if any of stdin/stdout not set.
+.SH "DESCRIPTION"
+.TP 2 
+\fBf4a\fR, \fBf4g\fR
+.br 
+experimental fig-style (pre-1979 standard, 1.0, indirectly threaded) Forth interactive compiler/interpreter for i586-pc-linux host systems. 
+.LP 
+.SH "OPTIONS"
+.LP 
+.TP 2 
+\fB\-\-\fR
+A Forth word which introduces a comment line and, serves as a dummy 'option' which terminates 
+the command line arguments list of immediately interpreted Forth text; any number, 
+i.e. as much as the command shell permits, of in-active, non-executeing arguments may follow.
+.LP 
+Any sequence of Forth words, up to the limit implied by the invoking shell, can be passed as 
+"arguments" with the command line, which will be executed immediately after start-up. For 
+additional information, enter \fB{ lload help }\fR and 
+issue the command \fB{ help forthword }\fR for the rsp glossary entry or, to displaying the 
+\fBforthword\fR's source file defining 'screen'.
+.SH "FILES"
+.TP 2 
+\fI/usr/local/lib/f4a\fP 
+.TP 4 
+F4 library to {\fBload\fR}, {\fBlload\fR}, applications, {\fBhelp\fR}
+.TP 8
+with standard extension files:
+.br
+f4e.scr		full screen blockfiles editor
+.br
+f4f.scr		'real numbers' arithmetics
+.br
+f4m.scr		'common heap' memory de/allocation
+.br
+       		generic array definition
+.br
+f4p.scr		printer control
+.br
+f4x.scr		common extensions & utils, {save'}
+
+figed.scr 	fig-Forth style line editor
+.br
+f4ans.scr 	adaptation to ANS-Forth
+
+f4c.scr		hi-level aequivalents to kernel
+       		words, e.g. locals, doubles & quad
+.TP 2 
+\fI/usr/local/doc/f4a\fP 
+.br 
+documentation, examples, test files, 
+.br
+fig-Forth supplemental texts.
+.TP 2
+\fI/usr/local/doc/f4a/glossary\fP 
+.br
+by F4 installation generated kernel words' glossary, used by the {\fBhelp\fR} word.
+.SH "EXAMPLES"
+.LP 
+type:
+.TP 2 
+\fBf4a lload words words cr bye\fR
+.br 
+display the kernel words defined in all vocabularies and exit.
+.TP 2 
+\fBf4a vlist lload words lload help  help help  help forth  help words  help vlist  help cr cr help bye bye\fR
+.br 
+display the rsp words' help text, i.e. glossary entries.
+.TP 2 
+\fBf4a lload f4\fR
+.br 
+load (compile) almost all words from the extensions file <f4y.scr>.
+.TP 2 
+\fBf4a 1,23 hex 4.56 dm* drop d. bye\fR
+.br 
+commandline integer numbers calculator ('double praecision', 64-bit, if "," or "." in the numeric string).
+.TP 2 
+\fBecho '34 hex 5 u^ d. cr bye' | f4a\fR
+the calculator w. piped command input, non-interactive.
+.SH "AUTHOR"
+.LP 
+H\-Peter Recktenwald, Berlin <mailto:f4@lxhp.in\-berlin.de>
+.SH "COPYING"
+.LP 
+F4 and related files from the same author may non-commercially freely be copied and used, the "QT-License 1.0" 
+in it's german translation applies (original and translated text supplied w. the distribution). German and EU 
+legislation applies; particularly, nothing from the F4 package is a subject to foreign export regulations.
+.br
+The distribution includes other files which are differently licensed, for supplemental information, not part 
+of the F4 package and not subject to the F4 licensing terms.
+
+.SH "SEE ALSO"
+.LP 
+\fBsource and supplemental docs\fR (dpans94 etc.):
+.br 
+http://www.lxhp.in\-berlin.de/e-lhpf4.html (en)
+.br 
+http://www.lxhp.in\-berlin.de/lhpf4.html (de)
+.TP 2
+\fBForth Tutorial\fR, Einfuehrung in den Umgang mit Forth
+.br
+http://www.lxhp.in\-berlin.de/lhpf8td.html (de)
+.TP 2 
+\fBLinux system calls\fR:
+.br 
+http://www.lxhp.in\-berlin.de/lhpsysc.html (en)
+.SH "OTHER"
+.TP 2
+\fBlib4th\fR(3) i386 native code 'subroutine threaded',
+.br
+statically linkable & dynamically loadable shared library
+.TP 2 
+\fBf8\fR(1) lib4th application:
+.br 
+http://www.lxhp.in\-berlin.de/lhpf8.html (en)
+.br 
+http://www.lxhp.in\-berlin.de/lhpf8d.html (de)

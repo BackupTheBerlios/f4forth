@@ -1,0 +1,254 @@
+// =========================================================================== //
+// (binutils' 2.12,2.13) gasp + as "praeprocessing" could be so simple but,
+// actually is a mess, utterly stupid, confused, inconsistent...
+// =========================================================================== //
+// with bu 2.14 GASP was abandoned by the binutils 'developrs', by plain (and 
+// false) statement justified with it's obsolescence - which, in fact is just 
+// ignorance, and, apparent in-capability to generating a program which serves 
+// its purpose; simply GNU/FSF with it's 20 years' evolving 'system'...
+// =========================================================================== //
+
+// =========================================================================== //
+// TESTS
+// ausgewertet anhand der jeweiligen 'dokumentation', was bei GNU/FSF-programmen
+// nie(!) heiszen will, dasz dort die wirklichen verhaeltnisse beschrieben sind.
+// Hinweise auf GASP gestrichen; einmal, weil das teil indiskutabel saumaeszig 
+// 'programmiert' wurde - es ist mir in der tat noch nie irgendein stueck weicher
+// ware untergekommen, das auch nur annaehernd so uebel zusammengestuempert war;
+// zum andern, weil man ihn numehr 'obsolet' erklaerte - ohne dies allerdings 
+// einer stichhaltigen oder gar nachvollziehbaren begruendung zu unterwerfen...
+// =========================================================================== //
+
+
+// =========================================================================== //
+// bis F4 0-0-19: segv anscheinend durch fehler von LD (ausgeloest durch AS?)
+
+bei ueberschreiten der adresse 8050000 am ende der .rodata-section, die ld als
+letzte im gesamten programm und damit unmittelbar vor .bss anordnet, konnte 
+das erzeugte programm wegen segv im ersten internen Aufruf von {-sp} nicht 
+ausgefuehrt werden: der ELF-header fand sich im file in page-size abstand 
+vor dem ersten programmsegment und wurde nicht in den speicher uebernommen 
+sodasz die zur initiierung daraus geholten referenzadressen unbrauchbar 
+waren. der code-anfang kam auf adresse 8050000 statt 80480074, zugriff auf
+jede niedrigere adresse fuehrte zum segfault. nach streichen des zusaetzlichen
+<.data> vor der stelle <D> verschwand das loch & der header wurde wieder in
+den speicher uebernommen, das folgende alignment blieb aber weiterhin falsch.
+daraus resultierten dann andere segfaults durch adressenfehler bei mremap.
+ursache im standard linker-script bei
+	.eh_frame_hdr
+	 *(.eh_frame_hdr)
+	                0x08051000                . = (ALIGN (0x1000) - ((0x1000 - .) & 0xfff))
+	                0x08051000                . = (0x1000 DATA_SEGMENT_ALIGN 0x1000)
+	                0x08051000                . = ALIGN (0x4)
+	                0x08051000                PROVIDE (__preinit_array_start, .)
+das erste ALIGN darin arbeitet fehlerhaft, oder sollte es das zweite sein? 
+oder das dritte? wozu das ganze ueberhaupt? die erklaerung im linker-script
+des LD (elf_i386.x*) ist lachhaft - und entbehrt jeglicher begruendung:
+    /* Adjust the address for the data segment. We want to adjust up to
+       the same address within the page on the next page up.  */
+	 
+beispiel aus F4 versionen von 0-1-0, file <f4s.ld-map> an der sprungstelle:
+1) IN ORDNUNG (.text byteweise erweitert, solange noch kein fehler auftrat):
+	.rodata         0x0804f198      0xe48
+	 *(.rodata .rodata.* .gnu.linkonce.r.*)
+	 .rodata        0x0804f198      0xe48 /usr/local/src/forth/t/f4a/b/fig4th.o
+	 *(.eh_frame_hdr)
+	                0x0804ffe0                . = (ALIGN (0x1000) - ((0x1000 - .) & 0xfff))
+	                0x08050000                . = (0x1000 DATA_SEGMENT_ALIGN 0x1000)
+	                0x08050000                . = ALIGN (0x4)
+	                0x08050000                PROVIDE (__preinit_array_start, .)
+2) IN ORDNUNG:
+	.rodata         0x0804f1b8      0xe48 /usr/local/src/forth/f4a/b/fig4th.o
+	 *(.eh_frame_hdr)
+	                0x08050000                . = (ALIGN (0x1000) - ((0x1000 - .) & 0xfff))
+
+3) FEHLER ab dem naechsten zusaetzlichen byte in .text:
+	.rodata         0x0804f1bc      0xe48 /usr/local/src/forth/f4a/b/fig4th.o
+	 *(.eh_frame_hdr)
+	                0x08050004                . = (ALIGN (0x1000) - ((0x1000 - .) & 0xfff))
+	                0x08051004                . = (0x1000 DATA_SEGMENT_ALIGN 0x1000)
+	                0x08051004                . = ALIGN (0x4)
+	                0x08051004                PROVIDE (__preinit_array_start, .)
+
+das erste alignment ist mir einigermaszen raetselhaft; in beiden beispielen
+bleibt es ohne wirkung. das zweite alignment macht zwar was, aber wozu das gut 
+sein soll, bleibt (auch in der ld-dokumentation) ganz und gar raetselhaft.
+insbes. zeigt der vergleich 1) mit 2), dasz in der tat irgendwo was 'aligned' 
+wird (erste adresse 8050000), beispiel 3) offenbart dann (m.E.) den fehler!
+ob das was mit der somnambulen wahnidee von 'instabilen' programmen zu tun hat, 
+aus welchem ueberzeugenden grunde man einen 'sicherheitsabstand' einfuehrte???
+
+abhilfe durch <.align page_size> sowohl am anfang als auch am 
+ende jeder einzelnen section.
+
+// =========================================================================== //
+// AS:
+// =========================================================================== //
+
+// ergaenzende macoes
+// =========================================================================== //
+//;
+//; macro <j size label | jmpl label>   enable sane assembly of branches
+//;	genauso daemlich, hier aber vielleicht von nutzen, ist die tatsache, 
+//;	dasz spruenge auf '.global'-referenzen stets lang assembliert werden
+// ; because...
+// ;	jmp $winsz	nothing...
+// ;	jmp winsz	forcedly 'optimized'
+// ;	jmp *winsz	\ all the same:
+// ;	jmp *(winsz)	 ) assembling an
+// ;	ljmp *winsz	/ indirect(!) branch
+.macro j s,d=nix
+ .nolist
+.ifc "\s","near"
+.list
+	.byte 0xe9
+	.long \d-(.+4)
+.nolist
+.else
+ .ifc "\s","short"
+  .if ((\d-(.+3))<0x80)&((\d-(.+3))>-0x81)
+.list
+	jmp \d
+.nolist
+  .else
+  .print "jmp short \d - disp out of range"
+  .err
+  .endif
+ .else
+  .ifc "\d","nix"
+.list
+	jmp \s
+.nolist
+  .endif
+ .endif
+.endif
+ .list
+.endm
+//;	<b label>	jmp short - re <j>
+#define b j short
+//;	<r>		ret
+#define r ret
+//; 
+//; <movi num,dst>
+//;	because i always forget that ugly currency char, leading immediates
+.macro movi num,dst,sz=
+    mov\sz $\num,\dst
+.endm
+// ;for the vt ctrls
+.macro esky c
+    .byte 27
+    .asciz "\c"
+    .align 4,0
+.endm
+
+.macro	stgq s
+	.byte 2f-1f
+1:	.ascii "\s"
+2:	.byte 0
+.endm
+// =========================================================================== //
+
+// =========================================================================== //
+// AS
+// =========================================================================== //
+
+// =========================================================================== //
+// values assignation
+// falsely documented! following found by experiments:
+
+	name = constant
+	...
+	name = name + expression 
+
+// yields the run-time variable name the value of which will be assembled as is,
+// when encountered at AS run-time. BUT:
+
+	.ifndef name
+	name = base_reference - .
+	.endif
+
+	name = name - .
+	    ...
+	name = name - .
+
+// assembles the final value of name to any(!) occurence of the variable!
+
+
+
+// =========================================================================== //
+// AS macro calls by concatenated names
+
+// for instance, those macroes
+	.macro linkforth;.ifndef LF0;LF0:	;.long lfforth+4-10001f	;.else;.long 10001b-10001f;.endif;10001:;.endm
+	.macro linkroot;.ifndef LR0;LR0:	;.long lfroot+4-10002f	;.else;.long 10002b-10002f;.endif;10002:;.endm
+	.macro linkhidden;.ifndef LH0;LH0:	;.long lfhidden+4-10003f;.else;.long 10003b-10003f;.endif;10003:;.endm
+
+// can be invoked from within another macro
+	.macro clfa l,x,i=0,m="nix",v=forth
+	// ...
+		link\v
+	// ...
+	.endm
+
+// e.g. with
+	clfa hier,0,0,"",root
+
+// above "link\v" expands to
+		linkroot
+
+//
+// =========================================================================== //
+// text concatenation in a macro
+// not or, falsely, documented! found by experiments:
+
+.macro clfa l,x,i=0,m="nix",v=forth
+    ...
+\l\(mehr)\v: .long 0xabba
+und\v\(noch_mehr)\l: .long 0xedda
+.endm
+
+// assembles
+ 12625                       	>> clfa lp,doucons,0,nix,local
+			...
+ 12625                       	>>> lpmehrlocal:.long 0xabba
+ 12625 6670 BAAB0000          	>>> .long 0xabba
+ 12625                       	>>> undlocalnoch_mehrlp:.long 0xedda
+ 12625 6674 DAED0000          	>>> .long 0xedda
+ 
+//
+// =========================================================================== //
+// AS & 'local' labels
+
+    description of an ascii 1 (or 2 in case of - actually not present - truely 
+    local labels, by "(num)$") being inserted after leading "L" is not true. 
+    those L(num) labels get compiled as seen, with no intermediate lo-asci code.
+    
+    1:		=> L1	(just that!)
+    1$		=>	nothing! AS message explains about some 'junk...'
+
+//
+// =========================================================================== //
+// AS & .bss
+
+	.long 0
+    but no other pseudo-op, e.g
+	.fill 4,4,0
+    aborts somwhere, with NO error message
+
+//
+// =========================================================================== //
+// AS & counting labels within macroes, by '\@'
+
+    L\@:
+\@ numeric value not predictable, does #not# count the resp. macroes useage 
+but, increments by some figure > 0 (by 3 in F4 example, beginning w. L353).
+
+//
+// =========================================================================== //
+// AS & .globl
+
+    branches to '.global' declared labels always compiled w. long(dword) disp!
+
+//
+// =========================================================================== //
+// - eof -

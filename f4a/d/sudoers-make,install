@@ -1,0 +1,4 @@
+# example for the <sudoers> file:
+# <user> should be a 'trusted user' w.o. networking permissions.
+<user>	<hostname> = NOPASSWD: /usr/local/bin/install
+<user>	<hostname> = (root) /usr/bin/make

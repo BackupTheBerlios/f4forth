@@ -1,0 +1,1239 @@
+asm
+ section Forth
+ pagewid 80
+dataspace equ 4000 enough to be getting on with!
+ data dataspace
+* Registers: (D)estroyable, (I)nput only, (F)orth reserved
+     ; d0-d3 (D)
+     ; d4-d6 (D) never touched! user code can communicate
+     ;    d7.msw (D) zeroed at boot, cold or warm starts
+up setstr d7 lsw (F) user pointer, needing offset by a6
+     ;    a0 (D)
+     ;    a1 (I) absolute address of entered code
+w  setstr a2 (I) parameter field pointer
+nx setstr a3 (F) jump address to leave assembler
+ip setstr a4 (F) forth next instruction pointer
+rp setstr a5 (F) return stack pointer
+Z    ;    a6 (F) always the program base address
+     ;    a7 (F) forth stack pointer, params in/out
+*
+chans equ 16 number of channels supported (must be even)
+*
+ssbits equ 6 is nice for 64 byte headers
+ssize equ 1<<ssbits
+nbuf equ 1024/ssize
+*
+bmag equ (ssize+4)*nbuf buffer space
+uarea equ 64 user area
+tibrp equ 256 combined tib & return stack
+*
+* standard layout for QDOS, and me
+*
+ move.w (sp)+,d7
+ bne.s gotcha
+ bra.s defscr
+ dc.w $4AFB,2,'QF' to lengthen, patch 'screen' to elsewhere.
+screen dc.w $0201,$0207,448,202,32,14
+savehead ; at locn 24
+ dc.l 0 file length, set to 'here' in case save" ser" used
+ dc.b 0,1 access code = 0, filetype = executeable
+ dc.l dataspace,0
+* 32.w: dataspace, may be altered, but keep <= 32K-'here'!
+* 
+stdio equ *+2
+ dc.b chans-2,chans-1,0,1,2,3
+* The above give a simple redirection of our channel table.
+* 38: dr0 (r/w, etc)
+* 39: dr1 (ditto, plus save" and chain")
+* 40: standard input (expect, key, ?terminal, etc)
+* 41: standard output (type, emit, etc)
+* 42: reserved for user code, e.g. as an input or update file
+* 43: reserved for user code, e.g. as an output or work file
+*
+* boot up code
+*
+defscr
+ lea screen-Z(a6),a1
+ move.w $c6,a2
+ jsr (a2)
+ move.l a0,-(sp) put default screen on stack
+ moveq #1,d7 say it's there
+gotcha
+ movem.l (sp),d0-d1/d3-d6/a0-a4
+ lsl.w #2,d7
+ add.w d7,sp top of channels
+ lea -chans*4(sp),a5 channel table base
+ subq.w #4,d7 did we just have one channel?
+ bne.s notone
+ move.l d0,d1 yes - make ch1=ch0
+ addq.w #4,d7 and pretend it was there all along
+notone
+ addq.w #4*2,d7 put back and include channel 2
+ moveq #-1,d2 channel 2 is initially closed
+ movem.l d0-d6/a0-a4,(a5) set down what seems to be going
+ add.l a5,d7
+chclear
+ move.l d2,-(sp) set remaining channels closed
+ cmp.l sp,d7
+ bne.s chclear
+*
+* Channels are set up as:
+* 0: primary input: first EX chan or screen
+* 1: primary output: second or only EX chan or screen
+* 2: uncommited
+* 3-11: may also be passed in by EX
+* 12-13: uncommitted
+* 14: Used by r/w as dr0.
+* 15: Used by r/w as dr1. Also used by chain" and save".
+*
+ move.l a5,a0
+ sub.l a6,a5
+ move.w a5,limit+2-Z(a6)
+ lea -bmag(a5),a1
+ move.w a1,first+2-Z(a6)
+ move.w a1,prev+2-Z(a6)
+ move.w a1,use+2-Z(a6)
+ lea -uarea(a1),[rp] r0
+ move.w [rp],[up]
+ lea -tibrp([rp]),a1 tib
+ move.w a1,sp s0
+ movem.w [up]/a1/[rp]/sp,origin+$10-Z(a6)
+*
+ add.l a6,sp
+btclr
+ clr.l -(a0)
+ cmp.l sp,a0
+ bcc.s btclr
+* drops into cold start jump at origin
+*
+* macros
+*
+prevlink setstr Z
+prevnum setnum 0
+previmm setnum 0
+sings setstr {'`Xx}
+*
+create macro t,Xaddr
+Z[prevnum] equ [previmm]
+l setnum [.len(t)]
+prevnum setnum [prevnum]+1
+ dcb.b (*+1+[l]-Z)&1+1,Z[prevnum]![l] for CET, etc
+ ifnum [l] = 1 goto single
+ ifstr {[.left(t,1)]} <> {`} goto ord
+ dc.b $5B,'compile',']'!$80
+ goto dclfa 
+single maclab
+ ifnum [.instr(sings,t)] = 0 goto nsing
+ ifstr {[t]} <> ' goto ntick
+ dc.b ''''!$80
+ goto dclfa
+ntick maclab
+ ifstr {[t]} <> {`} goto nbrac
+ dc.b $5B!$80
+ goto dclfa
+nbrac maclab
+ dc.b $80
+ goto dclfa
+nsing maclab
+ dc.b '[t]'!$80
+ goto dclfa
+ord maclab
+ dc.b '[.left(t,[l]-1)]','[.right(t,1)]'!$80
+dclfa maclab
+ dc.w [prevlink]-Z
+[.lab] dc.w [Xaddr]-Z
+prevlab setstr [.lab]
+prevlink setstr [.lab]-[l]-3
+previmm setnum $80
+ endm
+*
+immed macro
+previmm setnum $140-[previmm]
+ endm
+*
+endit macro
+Z[prevnum] equ [previmm]
+ntop equ [prevlink]
+top ds.w 0
+ end
+ endm
+*
+* base of fig-FORTH proper
+*
+origin
+ jmp docold-Z(a6)
+ jmp dowarm-Z(a6)
+ dc.l $4ef6ec54 LWR68K in radix 36
+* cold/warm move the following to the user area
+ dc.w ntop-Z last name in dictionary
+ dc.w $c2 backspace character (never used)
+ ds.w 4 initial up, s0, r0 and tib - filled in at prog exec
+ dc.w 31 initial max width for names
+ dc.w 0 0: no disk, 1: dr0 available, -1: (abort) in use
+* warm stops here
+ dc.w top-Z initial fence address
+ dc.w top-Z initial top of directory
+ dc.w vl0-Z initial vocabulary link pointer
+* cold goes all the way, and also resets forth+6 from origin+$c
+
+code lit
+ move.w ([ip])+,-(sp)
+nextloc
+ move.w ([ip])+,[w]
+exent
+ add.l a6,[w]
+ move.w ([w])+,a1
+ add.l a6,a1
+ jmp (a1)
+
+code dlit
+ move.l ([ip])+,-(sp)
+ jmp ([nx])
+
+code execute
+ move.w (sp)+,[w]
+ bra.s exent
+branch create {branch} Xbranch
+
+code 0branch
+ tst.w (sp)+
+ beq.s Xbranch
+bump
+ addq.l #2,[ip]
+ jmp ([nx])
+
+code (loop)
+ moveq #1,d0
+loopcmp
+ add.w ([rp])+,d0
+ cmp.w ([rp]),d0
+ bge.s loopex
+loopon
+ move.w d0,-([rp])
+Xbranch
+ add.w ([ip]),[ip]
+ jmp ([nx])
+
+code (+loop)
+ move.w (sp)+,d0
+ bpl.s loopcmp
+ add.w ([rp])+,d0
+ cmp.w ([rp]),d0
+ bgt.s loopon
+loopex
+ addq.l #2,[rp]
+ bra.s bump
+
+code (do)
+ move.l (sp)+,-([rp])
+ jmp ([nx])
+
+code digit
+ move.w (sp)+,d1
+ moveq #-'0',d0
+ add.w (sp),d0
+ bmi.s putfalse
+ cmp.w #10,d0
+ bcs.s digbas
+ cmp.w #'a'-'0',d0
+ bcs.s diglow
+ sub.w #'a'-'A',d0
+diglow
+ cmp.w #'A'-'0',d0
+ bcs.s putfalse
+ subq.w #'A'-'0'-10,d0
+digbas
+ move.w d0,(sp)
+ cmp.w d1,d0
+ bcs.s Xone
+putfalse
+ clr.w (sp)
+ jmp ([nx])
+
+code (find)
+ moveq #0,d0
+ move.w (sp)+,[w]
+ bra.s findent
+*
+findlink
+ tst.b ([w])+
+ bpl.s findlink
+ move.w ([w]),[w]
+findent
+ move.w [w],d2
+ beq.s putfalse
+ add.l a6,[w]
+ move.w (sp),a1
+ add.l a6,a1
+ move.b ([w])+,d0
+ moveq #$3f,d2
+ and.b d0,d2
+ sub.b (a1)+,d2
+ bne.s findlink
+findscan
+ moveq #127,d2
+ and.b ([w]),d2
+ move.b (a1)+,d1
+ eor.b d2,d1
+ beq.s findchk
+ cmp.b #32,d1
+ bne.s findlink
+ or.b d1,d2
+ sub.b #'a',d2
+ cmp.b #26,d2
+ bcc.s findlink
+findchk
+ tst.b ([w])+
+ bpl.s findscan
+ addq.w #4,[w]
+ sub.w a6,[w]
+ move.w [w],(sp)
+ move.w d0,-(sp)
+Xone
+ move.w #1,-(sp)
+ jmp ([nx])
+
+code enclose
+ move.w (sp)+,d0
+ move.w (sp),[w]
+ add.l a6,[w]
+ move.w [w],d1
+ addq.w #1,d1
+encldskip
+ cmp.b ([w])+,d0
+ beq.s encldskip
+ move.w [w],-(sp)
+ sub.w d1,(sp)
+encword
+ move.b ([w])+,d2
+ beq.s encend
+ cmp.b d2,d0
+ bne.s encword
+encend
+ move.w [w],-(sp)
+ sub.w d1,(sp)
+ tst.b d2
+ beq.s encnull
+ addq.w #1,[w]
+encnull
+ sub.w d1,[w]
+ move.w [w],-(sp)
+ jmp ([nx])
+Xexpect
+ move.w (sp)+,d2
+ move.w (sp)+,a1
+ moveq #2<<3!4!2,d0 io.fline wait stdin
+ bsr.s iocomm
+ bpl.s expa1ok
+ addq.l #1,a1
+ sf stdio-Z(a6) any error, try resetting to chan 0
+expa1ok
+ sf (a1)
+ sf -(a1)
+ jmp ([nx])
+Xuless
+ move.w (sp)+,d0
+ cmp.w (sp)+,d0
+hitrue
+ bhi.s Xone
+Xzero
+ clr.w -(sp)
+ jmp ([nx])
+Xgreat
+ move.l (sp),d0
+ swap d0
+ move.l d0,(sp)
+Xless
+ move.w (sp)+,d0
+ cmp.w (sp)+,d0
+ ble.s Xzero
+ bra.s Xone
+Xkey
+ moveq #$E<<3!4!2,d0 io.cursen wait stdin
+ bsr.s iocomm
+ moveq #1<<3!4!2,d0 io.fbyte wait stdin
+ bsr.s iocomm
+ move.w d1,-(sp)
+ sf (sp) 
+ jmp ([nx])
+Xquestterminal
+ moveq #$E<<3!0!2,d0 io.cursen nowait stdin
+ bsr.s iocomm
+ moveq #0<<3!0!2,d0 io.pend nowait stdin
+ bsr.s iocomm
+ not.l d0 C=0, err.nc will give Z
+ bra.s hitrue
+doemit
+ move.w ([w]),-(sp)
+Xemit
+ move.w (sp)+,d1
+ moveq #5<<3!4!3,d0 io.sbyte wait stdout
+ moveq #1,d2
+ bra.s iocount
+Xtype
+ move.w (sp)+,d2
+ move.w (sp)+,a1
+ moveq #7<<3!4!3,d0 io.sstrg wait stdout
+iocount
+ add.w d2,$1a(a6,[up].w)
+ move.l [nx],-(sp)
+iocomm
+ moveq #3,d3
+ and.b d0,d3
+ move.b stdio-2-Z(a6,d3.w),d3
+ bsr.s mkchp
+ move.l d3,a0
+ lsr.w #3,d0
+ subx.w d3,d3
+trap3
+ add.l a6,a1
+ move.l a1,-(sp)
+ trap #3
+ move.l (sp)+,a1
+ add.w d1,a1 Ho hum... ERR.BP screws a1, this is for 'expect'
+ tst.l d0
+ rts
+Xioblo
+ move.w ([ip])+,d0
+ movem.w (sp)+,d2/a1
+ bsr.s iocomm
+ bra.s rwtst
+mkchp
+ and.w #15,d3
+ lsl.b #2,d3
+ move.w limit+2-Z(a6),a0
+ add.l a6,a0
+ lea 0(a0,d3.w),a2
+ move.l (a2),d3
+ rts
+Xrbyw
+ move.w (sp)+,d2
+ moveq #0,d1
+ move.w (sp)+,d1
+ move.w #$42<<3!4!0/2,d0 fs.posab wait dr0
+ asl.w #2,d1 block.b14->X
+ addx.w d0,d0 if bit 14 was set, change to dr1
+ lsl.l #ssbits-2,d1
+ bsr.s iocomm
+ move.w (sp)+,a1
+ bmi.s rwerr
+ moveq #7,d0 io.sstrg
+ lsr.b d2,d0 if flag was 1, convert to 3=io.fstrg
+ moveq #ssize,d2
+ bsr.s trap3
+rwtst
+ bpl.s gonext
+rwerr
+ lea quit+2-Z(a6),[ip]
+ move.l d0,-(sp)
+ move.w #1,-(sp)
+Xreport
+ move.w (sp)+,d3
+ move.l (sp),d0
+ move.l [nx],(sp)
+ bsr.s mkchp
+ move.l d3,a0
+ move.w $CC,a2
+ jmp (a2)
+Xert
+ move.l (sp)+,d0
+ bra.s rwtst
+Xclose
+ move.w (sp)+,d3
+ move.l [nx],-(sp)
+closeit
+ bsr.s mkchp
+ moveq #-1,d1 (also for open)
+ move.l d1,(a2)
+ moveq #2,d0 io.close
+ cmp.w d3,d0
+ bge.s noclose ignore -ve and prevent close of QDOS 0-2
+ moveq #chans-1,d2
+clchk
+ cmp.l (a0)+,d3
+ dbeq d2,clchk
+ beq.s noclose prevent close of duplicate entry
+ move.l d3,a0
+ trap #2
+noclose
+ rts
+Xopen
+ move.w (sp)+,d3
+ bsr.s closeit (kindly sets d1=-1 for us)
+ movem.w (sp)+,d3/a0
+ add.l a6,a0
+ moveq #1,d0 io.open
+ trap #2
+ move.l d0,-(sp)
+ blt.s gonext
+ move.l a0,(a2)
+gonext
+ jmp ([nx])
+expect create {expect} Xexpect
+key create {key} Xkey
+questterminal create {?terminal} Xquestterminal
+emit create {emit} Xemit
+type create {type} Xtype
+docold
+ movem.w origin+$c-Z(a6),d0-d3/[up]/a0-a5
+ move.w d0,forth+6-Z(a6)
+ movem.w a3-a5,$10(a6,d2.w)
+dowarm
+ movem.w origin+$c-Z(a6),d0-d1/[up]/a0-a4
+ movem.w d0-d1/[up]/a0-a4,0(a6,[up].w)
+ lea abort+2-Z(a6),[ip]
+ lea nextloc-Z(a6),[nx]
+Xrpstore
+ move.w $08(a6,[up].w),[rp]
+ add.l a6,[rp]
+ jmp ([nx])
+domove
+ movem.w (sp)+,d1/a0-a1 ( from to n --- )
+fillent
+ add.l a6,a0
+ add.l a6,a1
+rollent
+ move.w ([w]),d2
+ move.w d2,liveinstr-Z(a6)
+ lsl.b #2,d2
+livedown
+ bpl.s liveent
+ add.w d1,a0
+ add.w d1,a1
+ lsl.w #2,d2
+ bra.s livedown
+liveinstr dc.w 0
+liveent
+ dbra d1,liveinstr
+ jmp ([nx])
+Xfill
+ movem.w (sp)+,d0-d1/a0 ( addr n byte --- )
+ bra.s fillent
+* move.b d0,(a0)+ 10C0
+Xroll
+ move.l sp,a1
+ move.w (sp)+,d1
+ move.w d1,d0
+ add.w d0,d0
+ move.w 0(a1,d0.w),(a1)
+ move.l sp,a0
+ bra.s rollent
+cmove create {cmove} domove
+ move.b (a1)+,(a0)+ 10D9
+lesscmove create {<cmove} domove
+ move.b -(a1),-(a0) 1121
+wmove create {move} domove
+ move.w (a1)+,(a0)+ 30D9
+lesswmove create {<move} domove
+ move.w -(a1),-(a0) 3121
+
+code u*
+ move.w (sp)+,d0
+ mulu (sp)+,d0
+ bra.s upushl
+
+code u/
+ move.w (sp)+,d1
+ move.l (sp)+,d0
+ divu d1,d0
+uswapsh
+ swap d0
+upushl
+ move.l d0,-(sp)
+ jmp ([nx])
+
+code m*
+ move.w (sp)+,d0
+ muls (sp)+,d0
+ bra.s upushl
+
+code m/
+ move.w (sp)+,d1
+ move.l (sp)+,d0
+ divs d1,d0
+ bra.s uswapsh
+andx create {and} Xand
+docand
+ move.w ([w]),-(sp)
+Xand
+ move.w (sp)+,d0
+ and.w d0,(sp)
+ jmp ([nx])
+dashtwoand dc.w docand-Z,-2
+onefand dc.w docand-Z,$1f
+
+code or
+ move.w (sp)+,d0
+ or.w d0,(sp)
+ jmp ([nx])
+
+code xor
+ move.w (sp)+,d0
+ eor.w d0,(sp)
+ jmp ([nx])
+spfetch create {sp@} Xspfetch
+
+code sp!
+ move.w $06(a6,[up].w),sp
+ add.l a6,sp
+ jmp ([nx])
+rpstore create {rp!} Xrpstore
+rpfetch create {rp@} Xrpfetch
+
+code ;s
+ move.w ([rp])+,[ip]
+ add.l a6,[ip]
+ jmp ([nx])
+
+code leave
+ move.w ([rp]),2([rp])
+ jmp ([nx])
+greatr create {>r} Xgreatr
+greatrr dc.w *+2-Z
+ move.w (sp),-(sp)
+Xgreatr
+ move.w (sp)+,-([rp])
+ jmp ([nx])
+
+code r>
+ move.w ([rp])+,-(sp)
+ jmp ([nx])
+
+code r
+Xrx
+ move.w ([rp]),-(sp)
+ jmp ([nx])
+ix create {i} Xrx
+
+code j
+ move.w 4([rp]),-(sp)
+ jmp ([nx])
+zeroeq create {0=} Xzeroeq
+Xeq
+ move.w (sp)+,d0
+ sub.w d0,(sp)
+Xzeroeq
+ subq.w #1,(sp)
+logic
+ subx.w d0,d0
+ move.w d0,(sp)
+Xminus
+ neg.w (sp)
+ jmp ([nx])
+Xabs
+ move.w (sp),-(sp)
+Xplusdash
+ tst.w (sp)+
+ blt.s Xminus
+ jmp ([nx])
+
+code 0<
+ asl (sp)
+ bra.s logic
+plus create {+} Xplus
+docplus
+ move.w ([w]),-(sp)
+Xplus
+ move.w (sp)+,d0
+ add.w d0,(sp)
+ jmp ([nx])
+
+code d+
+ move.l (sp)+,d0
+ add.l d0,(sp)
+ jmp ([nx])
+minus create {minus} Xminus
+dminus create {dminus} Xdminus
+Xdabs
+ move.w (sp),-(sp)
+Xdplusdash
+ tst.w (sp)+
+ bge.s nodminus
+Xdminus
+ neg.l (sp)
+nodminus
+ jmp ([nx])
+
+code over
+ move.w 2(sp),-(sp)
+ jmp ([nx])
+Xtwoover
+ move.l 4(sp),-(sp)
+ jmp ([nx])
+drop create {drop} Xdrop
+Xtwodrop
+ addq.l #2,sp
+Xdrop
+ addq.l #2,sp
+ jmp ([nx])
+
+code swap
+ move.l (sp),d0
+ swap d0
+ move.l d0,(sp)
+ jmp ([nx])
+Xtwoswap
+ move.l (sp)+,d0
+ move.l (sp),d1
+ move.l d0,(sp)
+ move.l d1,-(sp)
+ jmp ([nx])
+
+code dup
+ move.w (sp),-(sp)
+ jmp ([nx])
+Xtwodup
+ move.l (sp),-(sp)
+ jmp ([nx])
+
+code +!
+ move.w (sp)+,[w]
+ move.w (sp)+,d0
+ add.w d0,0(a6,[w].w)
+ jmp ([nx])
+toggle create {toggle} Xtoggle
+dotog
+ move.w ([w]),-(sp)
+Xtoggle
+ move.w (sp)+,d0
+ move.w (sp)+,[w]
+ eor.b d0,0(a6,[w].w)
+ jmp ([nx])
+msbtog dc.w dotog-Z,$80
+immtog dc.w dotog-Z,$40
+smutog dc.w dotog-Z,$20
+
+code @
+ move.w (sp)+,[w]
+ add.l a6,[w]
+*fetchlong
+ move.w ([w]),-(sp)
+ jmp ([nx])
+*Xfetchl
+* move.l (sp)+,[w]
+* bra.s fetchlong
+
+code c@
+ move.w (sp)+,[w]
+cfetchw
+ add.l a6,[w]
+*cfetchlong
+ moveq #0,d0
+ move.b ([w]),d0
+ move.w d0,-(sp)
+ jmp ([nx])
+Xcount
+ move.w (sp),[w]
+ addq.w #1,(sp)
+ bra.s cfetchw
+*Xcfetchl
+* move.l (sp)+,[w]
+* bra.s cfetchlong
+
+code !
+ move.w (sp)+,[w]
+ add.l a6,[w]
+*storelong
+ move.w (sp)+,([w])
+ jmp ([nx])
+*Xstorel
+* move.l (sp)+,[w]
+* bra.s storelong
+
+code c!
+ move.w (sp)+,[w]
+ add.l a6,[w]
+*cstorelong
+ move.w (sp)+,d0
+ move.b d0,([w])
+ jmp ([nx])
+*Xcstorel
+* move.l (sp)+,[w]
+* bra.s cstorelong
+
+: : ?exec !csp current @ context !
+ create ] ;code immediate
+ sub.w a6,[ip]
+ move.w [ip],-([rp])
+ move.l [w],[ip]
+ jmp ([nx])
+
+: exit compile ;s ; immediate
+
+: ; ?csp [compile] exit smudge [compile] [ ; immediate
+
+: constant create smudge , ;code
+ move.w ([w]),-(sp)
+ jmp ([nx])
+
+: variable constant ;code
+ sub.w a6,[w]
+pushw
+ move.w [w],-(sp)
+ jmp ([nx])
+Xspfetch
+ move.w sp,[w]
+ bra.s dovariable
+Xrpfetch
+ move.w [rp],[w]
+ bra.s dovariable
+Xpwquoteq
+ move.w [ip],[w]
+ moveq #1,d0
+ and.w ([ip]),d0
+ add.w ([ip])+,d0
+ add.w d0,[ip]
+ bra.s dovariable
+Xrot
+ move.l (sp)+,d0
+ move.w (sp)+,[w]
+ move.l d0,-(sp)
+ bra.s pushw
+
+: user constant ;code
+ move.w ([w]),-(sp)
+ add.w [up],(sp)
+ jmp ([nx])
+lumpplus dc.w docplus-Z,$45
+dashone dc.w doconstant-Z,-1
+four dc.w doconstant-Z,4
+zero create {0} Xzero
+one create {1} Xone
+* 00 constant 0    01 constant 1
+
+hex
+ 02 constant 2    03 constant 3
+ 20 constant bl
+ 40 constant c/l
+
+  00 constant first
+  00 constant limit
+  40 constant b/buf
+  10 constant b/scr
+
+asm plusorigin create {+origin} docplus
+ dc.w origin-Z
+* 06 user s0
+* 08 user r0
+
+0a user tib
+0c user width
+0e user warning
+10 user fence
+12 user dp
+14 user voc-link
+16 user blk
+18 user in
+1a user out
+1c user scr 
+
+1e user offset
+20 user context
+22 user current
+24 user state
+26 user base
+28 user dpl
+2a user fld
+2c user csp
+2e user r#
+30 user hld
+
+asm oneplus create {1+} Xoneplus
+* : 1+ 1 + ;
+onedash create {1-} docplus
+ dc.w -1
+* : 1- 1 - ;
+
+code 2+
+ addq.w #2,(sp)
+ jmp ([nx])
+* : 2+ 2 + ;
+
+code 2-
+ subq.w #2,(sp)
+ jmp ([nx])
+* : 2- 2 - ;
+blkfetch dc.w *+2-Z
+ move.w $16(a6,[up].w),-(sp)
+ jmp ([nx])
+* : blk@ blk @ ;
+zeroinstore dc.w *+2-Z
+ clr.w $18(a6,[up].w)
+ jmp ([nx])
+* : 0in! 0 in ! ;
+statefetch dc.w *+2-Z
+ move.w $24(a6,[up].w),-(sp)
+ jmp ([nx])
+* : state@ state @ ;
+
+: here dp @ ;
+: allot dp +! ;
+: , here ! 2 allot ;
+: c, here c! 1 allot ;
+asm dash create {-} Xdash
+* : - minus + ;
+overdash dc.w *+2-Z
+* : over- over - ;
+ move.w 2(sp),-(sp)
+Xdash
+ move.w (sp)+,d0
+ sub.w d0,(sp)
+ jmp ([nx])
+eq create {=} Xeq
+* : = - 0= ;
+uless create {u<} Xuless
+less create {<} Xless
+great create {>} Xgreat
+* : > swap < ;
+rot create {rot} Xrot
+* : rot >r swap r> swap ;
+
+code depth
+ move.w 6(a6,[up].w),d0
+ add.w a6,d0
+ sub.w sp,d0
+ asr.w #1,d0
+ bra.s pushd0
+* : depth sp@ s0 @ swap - 2 / ;
+
+code pick
+ move.w (sp),d0
+ add.w d0,d0
+ move.w 0(sp,d0.w),(sp)
+ jmp ([nx])
+* : pick dup + sp@ + @ ;
+roll create {roll} Xroll
+ move.w -(a1),-(a0) 3121
+* : roll >r r pick sp@ dup 2+ r> wmove drop ;
+
+code -dup
+ move.w (sp),d0
+ beq.s nodup
+pushd0
+ move.w d0,-(sp)
+nodup
+ jmp ([nx])
+* : -dup dup if dup then ;
+
+code traverse
+ move.w (sp)+,d1
+travloop
+ add.w d1,(sp)
+ move.w (sp),d0
+ tst.b 0(a6,d0.w)
+ bpl.s travloop
+ jmp ([nx])
+* : traverse swap begin over + 7f over c@ < until swap drop ;
+
+: latest current @ @ ;
+
+asm lfa create {lfa} docplus
+ dc.w -4
+* : lfa 4 - ;
+cfa create {cfa} twodash+2
+* : cfa 2 - ;
+fourdash equ lfa
+fiveplus dc.w docplus-Z,5
+fivedash dc.w docplus-Z,-5
+
+: nfa five- -one traverse ;
+: pfa 1 traverse five+ ;
+
+: !csp sp@ csp ! ;
+: ?error swap if error else drop then ;
+: ?comp state@ 0= 11 ?error ;
+: ?exec state@ 12 ?error ;
+: ?pairs - 13 ?error ;
+: ?csp sp@ csp @ - 14 ?error ;
+: ?loading blk@ 0= 16 ?error ;
+
+: [ 0 state ! ; immediate
+: ] 0c0 state ! ;
+: compile ?comp r> dup 2+ >r @ , ;
+: smudge latest smutog ;
+: hex 10 base ! ;
+: decimal 0a base ! ;
+
+: (;code) r> latest pfa cfa ! ;
+: ;code ?csp compile (;code) [compile] [ smudge ; immediate
+
+: <builds 0 constant ;
+
+: does> r> latest pfa ! ;code
+ sub.w a6,[ip]
+ move.w [ip],-([rp])
+ move.w ([w])+,[ip]
+ add.l a6,[ip]
+ jmp dovariable-Z(a6)
+count create {count} Xcount
+* : count dup 1+ swap c@ ;
+
+code -trailing
+ subq.w #1,(sp)
+ bmi.s Xoneplus
+ move.l (sp),d0
+ add.w (sp),d0
+ cmp.b #' ',0(a6,d0.w)
+ beq.s dashtrailing+2
+Xoneplus
+ addq.w #1,(sp)
+ jmp ([nx])
+*: -trailing dup 0 do over over + 1- c@
+* bl - if leave else 1- then loop ;
+space create {space} doemit
+ dc.w 32
+cr create {cr} doemit
+ dc.w 10
+asciiquote dc.w doconstant-Z,0+'"'
+
+: (.") r> count 2dup + 1+ -2and >r type ;
+: ." asciiquote state@
+ if compile (.") word here c@ 1 or 1+ allot
+ else word here count type then ; immediate
+
+: query tib @ 51 expect zeroin! ;
+: x blk@
+ if 1 blk +! zeroin! blk@ b/scr 1- and 0=
+  if ?exec r> drop then
+ else r> drop then ; immediate
+
+asm fill create {fill} Xfill
+ move.b d0,(a0)+ 10C0
+* : fill swap >r over c! dup 1+ r> 1- cmove ;
+
+: erase 0 fill ;
+: blanks bl fill ;
+: hold -one hld +! hld @ c! ;
+: pad here lump+ -2and ;
+
+: word blk@ if blk@ block else tib @ then
+ in @ + swap enclose here asciiquote blanks
+ in +! over- >rr here c! + here 1+ r> cmove ;
+
+: (number) begin 1+ >rr c@ base @ digit
+  while swap base @ u* drop rot base @
+   u* d+ dpl @ 1+ if 1 dpl +! then r> repeat r> ;
+: number 0 0 rot dup 1+ c@ 2d = >rr + -one
+ begin dpl ! (number) dup c@ bl -
+  while dup c@ 2e - 0 ?error 0 repeat
+  drop r> if dminus then ;
+: -find bl word here context @ @ (find)
+ dup 0= if drop here latest (find) then ;
+
+: (abort) abort ;
+: error warning @ 0< if (abort) then
+ here count type ." ? " message sp! blk 2@ quit ;
+: id. pad 20 5f fill dup pfa lfa over-
+ pad swap 2dup + 1- >r cmove r> msbtog
+ pad count 1fand type space ;
+
+: create -find if drop nfa id. four message space then
+ here dup count width @ min 1+ allot over msbtog
+ here 1 and if 1 allot 2dup here over- <cmove swap then
+ drop here 1- msbtog latest , current @ ! here 2+ , smudge ;
+
+: [compile] -find 0= 0 ?error drop cfa , ; immediate
+: literal state@ if compile lit , then ; immediate
+: dliteral state@ if compile dlit , , then ; immediate
+: ascii bl word here 1+ c@ [compile] literal ; immediate
+: ?stack depth 0< 1 ?error sp@ pad lump+ < 7 ?error ;
+
+: interpret begin -find if
+  state@ < if cfa , else cfa execute then ?stack
+  else here number dpl @ 1+
+   if [compile] dliteral else drop [compile] literal then
+  ?stack then again ;
+
+: immediate latest immtog ;
+: vocabulary <builds 81A0 , current @ cfa ,
+  here voc-link @ , voc-link ! does> 2+ context ! ;
+vocabulary forth immediate
+: definitions context @ current ! ;
+: ( 29 word ; immediate
+
+: quit 0 blk ! [compile] [ cr
+ begin rp! state@ 0= 3c + space emit query interpret again ;
+
+asm basecpu dc.w *+2-Z
+ move.w $26(a6,[up].w),-(sp)
+ move.w #36,$26(a6,[up].w)
+ move.l origin+8-Z(a6),-(sp)
+ jmp ([nx])
+
+: .cpu basecpu d. base ! ;
+: abort sp! dr0 decimal cr .cpu 9 count type
+ [compile] forth definitions quit ;
+asm cold create {cold} origin
+warm create {warm} origin+2
+
+code s->d
+ move.w (sp)+,[w]
+ move.l [w],-(sp)
+ jmp ([nx])
+* : s->d dup 0< minus ;
+plusdash create {+-} Xplusdash
+* : +- 0< if minus then ;
+dplusdash create {d+-} Xdplusdash
+* : d+- 0< if dminus then ;
+abs create {abs} Xabs
+* : abs dup +- ;
+dabs create {dabs} Xdabs
+* : dabs dup d+- ;
+
+code min
+ move.w (sp)+,d0
+ cmp.w (sp),d0
+ bge.s nomin
+mmput
+ move.w d0,(sp)
+nomin
+ jmp ([nx])
+* : min over over > if swap then drop ;
+
+: max swap min ;
+
+: * u* drop ;
+: /mod >r s->d r> m/ ;
+: / /mod swap drop ;
+: mod /mod drop ;
+: */mod >r m* r> m/ ;
+: */ */mod swap drop ;
+: m/mod >r 0 r u/ r> swap >r u/ r> ;
+
+00 variable use
+00 variable prev
+: +buf b/buf + four + dup limit =
+ if drop first then dup prev @ - ;
+: update prev @ @ 8000 or prev @ ! ;
+: empty-buffers first limit over- erase ;
+: dr0 0 offset ! ;
+: dr1 4000 offset ! ;
+
+asm rbyw create {r/w} Xrbyw
+
+: buffer use @ >rr begin +buf until use ! r @ 0<
+ if r 2+ r @ 7fff and 0 r/w then r ! r prev ! r> 2+ ;
+
+: block offset @ + >r prev @ dup @ r - dup + if begin
+ +buf 0= if drop r buffer dup r 1 r/w 2- then
+ dup @ r - dup + 0= until dup prev ! then r> drop 2+ ;
+
+: (line) >r c/l b/buf */mod r> b/scr * + block + c/l ;
+: .line (line) -trailing type ;
+: message warning @ if -dup
+ if four offset @ b/scr / - .line then else ." msg # " . then ;
+
+: load blk 2@ >r >r zeroin! b/scr * blk !
+ interpret r> r> blk 2! ;
+: --> ?loading zeroin! b/scr blk@ over mod - blk +! ; immediate
+
+: ' -find 0= 0 ?error drop [compile] literal ; immediate
+: forget [compile] ' nfa dup fence @ u< 15 ?error
+ >r voc-link @ begin r over u< while
+  [compile] forth definitions @ dup voc-link ! repeat
+ begin dup four- begin pfa lfa @ dup r u< until
+  over 2- ! @ -dup 0= until r> dp ! ;
+
+: back here - , ;
+: begin ?comp here 1 ; immediate
+: endif ?comp 2 ?pairs here over- swap ! ; immediate
+: then [compile] endif ; immediate
+: do compile (do) here 3 ; immediate
+: loop 3 ?pairs compile (loop) back ; immediate
+: +loop 3 ?pairs compile (+loop) back ; immediate
+: until 1 ?pairs compile 0branch back ; immediate
+
+: end [compile] until ; immediate
+: again 1 ?pairs compile branch back ; immediate
+: repeat 2swap [compile] again 2- [compile] then ; immediate
+: if compile 0branch here 0 , 2 ; immediate
+: else 2 ?pairs compile branch here 0 ,
+ swap 2 [compile] then 2 ; immediate
+: while [compile] if 2+ ; immediate
+
+: spaces 0 max -dup if 0 do space loop then ;
+: <# pad hld ! ;
+: #> 2drop hld @ pad over- ;
+: sign rot 0< if 2d hold then ;
+: # base @ m/mod rot 9 over < if 7 + then 30 + hold ;
+: #s begin # 2dup or 0= until ;
+
+: d.r >r swap over dabs <# #s sign #> r> over- spaces type ;
+: d. 0 d.r space ;
+: .r >r s->d r> d.r ;
+: . s->d d. ;
+: ? @ . ;
+
+: list decimal cr dup scr ! ." scr # " .
+ 10 0 do cr i 3 .r space i scr @ .line loop cr ;
+: index 1+ swap
+ do cr i 3 .r space 0 i .line ?terminal if leave then loop ;
+: triad 3 / 3 * 3 over + swap
+ do cr i list loop cr 0f message cr ;
+
+: vlist context @ @ 1 begin
+  if cr 0 out ! then dup id. pfa lfa @
+  dup 1+ c@ 0a0 = ?terminal or 1- and -dup while
+  dup c@ 1fand out @ + 48 > repeat cr ;
+
+asm
+twodrop create {2drop} Xtwodrop
+* : 2drop drop drop ; ( d --- )
+twodup create {2dup} Xtwodup
+* : 2dup over over ; ( d --- d d )
+twoswap create {2swap} Xtwoswap
+* : 2swap rot >r rot r> ; ( d1 d2 --- d2 d1 )
+twoover create {2over} Xtwoover
+* : 2over 4 pick 4 pick ; ( d1 d2 --- d1 d2 d1 )
+
+code 2@
+ move.w (sp)+,[w]
+ add.l a6,[w]
+ move.l ([w]),-(sp)
+ jmp ([nx])
+* : 2@ dup 2+ @ swap @ ;  ( addr --- d1 )
+
+code 2!
+ move.w (sp)+,[w]
+ add.l a6,[w]
+ move.l (sp)+,([w])
+ jmp ([nx])
+* : 2! rot over 2+ ! ! ;  ( d1 addr --- )
+
+: 2variable variable , ;
+
+: 2constant 2variable ;code
+ move.l ([w]),-(sp)
+ jmp ([nx])
+*fetchl create {@l} Xfetchl
+*cfetchl create {c@l} Xcfetchl
+*storel create {!l} Xstorel
+*cstorel create {c!l} Xcstorel
+open create {open} Xopen ( name type chan --- err.l )
+close create {close} Xclose ( chan --- )
+report create {report} Xreport ( err.l chan --- )
+ert dc.w Xert-Z ( err.l --- )
+* : ert dup 0< if 1 report quit then drop drop ;
+ioblo dc.w Xioblo-Z ( addr len --- ) ( opn follows like 'lit' )
+fsheads equ $46<<3!4!1+Z fs.heads wait dr1
+fssave equ $49<<3!4!1+Z fs.save wait dr1
+temp dc.w doconstant-Z,stdio-1-Z ( --- stdio-1 )
+* 0e constant temp
+pwquoteq create {(w")} Xpwquoteq ( --- addr )
+* : (w") r r @ 1+ 1 or 1+ r> + >r ;
+
+: w" asciiquote 0 state@
+ if compile (w") c, word here c@ 1+ 1 or allot
+ else pad c! word here pad 1+ here c@ 1+ <cmove pad
+ then ; immediate
+: save" temp c@ dup [compile] w" 3 rot open ert
+ lit savehead here over 2+ ! 0 ioblo fsheads
+ 0 here ioblo fssave close ;
+: chain" temp count swap over [compile] w" 1 rot open ert c! ;
+
+code bye
+ moveq #0,d3
+ moveq #-1,d1
+ moveq #5,d0
+ trap #1
+

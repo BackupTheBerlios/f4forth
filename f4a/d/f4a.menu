@@ -1,0 +1,44 @@
+?package(f4a): \
+	needs=text \
+	section="Apps/Programming" \
+	title="f4g" \
+	longtitle="fig-style Forth Compiler/Interpreter" \
+	command="/usr/local/bin/f4g" \
+	icon="/usr/X11R6/include/X11/pixmaps/f4.xpm" \
+	hints="Interpreter,Compiler,Forth"
+
+?package(f4a): \
+	needs=text \
+	section="Apps/Programming" \
+	title="f4d" \
+	longtitle="fig-style Forth Compiler/Interpreter" \
+	command="/usr/local/bin/f4d" \
+	icon="/usr/X11R6/include/X11/pixmaps/f4.xpm" \
+	hints="Interpreter,Compiler,Forth"
+
+?package(f4a): \
+	needs=text \
+	section="Apps/Programming" \
+	title="f4a" \
+	longtitle="fig-style Forth Compiler/Interpreter" \
+	command="/usr/local/bin/f4a" \
+	icon="/usr/X11R6/include/X11/pixmaps/f4.xpm" \
+	hints="Interpreter,Compiler,Forth"
+
+?package(f4a): \
+	needs=text \
+	section="Apps/Programming" \
+	title="fig4th" \
+	longtitle="fig-style Forth Compiler/Interpreter" \
+	command="/usr/local/bin/fig4th" \
+	icon="/usr/X11R6/include/X11/pixmaps/f4.xpm" \
+	hints="Interpreter,Compiler,Forth"
+
+?package(f4a): \
+	needs=text \
+	section="Apps/Viewers" \
+	title="f4view" \
+	longtitle="Forth Blockfiles Viewer mode for <less>" \
+	command="/usr/local/bin/f4view.4th %s|less" \
+	icon="/usr/X11R6/include/X11/pixmaps/f4.xpm" \
+	hints="Programming,Blockfile-Viewer,Forth"

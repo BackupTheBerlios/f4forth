@@ -1,0 +1,846 @@
+#################################################################################
+started Mit Jul 24 23:45:30 GMT 2002 0-00-00+00, hp <mailto:f4@lxhp.in-berlin.de>
+	NOTE: testing GASP & AS' att-syntax mode, don't expect anything useable!
+6/2003	NOTE: abandoned GASP and the (supposed) substitute, MASP, just CPP+AS:
+	      testing AS' wich, indeed, might generate something useable...
+#################################################################################
+re file QT-license.txt (en), QT-lizenz.txt in ./d directory
+	for Copyright and useage licensing information.
+
+PLEASE: READ THE GLOSSARY and F4-INTRO because, 
+				F4 modelled after F.I.G. FORTH but, is DIFFERENT!
+#################################################################################
+---------------------------------------------------------------------------------
+F4 depot
+	http://www.xhp.in-berlin.de/e-lhpf4.html	(en)
+	http://www.xhp.in-berlin.de/lhpf4.html		(de)
+---------------------------------------------------------------------------------
+
+
+0-1-0+00 - rel 14.6.03 - 
+		1st fully functional
+
+
+0-0-19+11
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+    	[n]	was [number], default for modified, deferred word.
+    modified:
+    	[number] deferred, by default xec {[n]}, functionally un-changed.
+    fixed:
+		binary size dependent segfault, due to false linking by "ld" or 
+		"ld-linux" fixed w. additional page-sized alignment at .rodata 
+		section end.
+    NOTIZ:	ausloeser ist anscheinend eine alberne 'alignment'-procedur 
+		zwischen .rodata und den anderen sectionen im linker-script, die 
+		um page_size weiterrueckt und dann auf vielfache von 4 justiert; 
+		aus welchem verrueckten grunde auch immer. damit sind sowohl mmap
+		zum justieren als auch mprotect fuer die initialen daten wegen 
+		der bindung an ganzzahlige vielfache des 'page-size' ausweglos 
+		zum scheitern verurteilt.
+		als konsequenz folgt, dasz bei aenderungen darauf zu achten ist, 
+		dasz alle sectionen sowohl page-aligned beginnen als auch enden.
+    other:
+    unresolved:
+
+
+0-0-19		restored from corrupted cvs archive
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+    modified:
+    fixed:	{save'} &c, {v}
+    unresolved:	size related relocation errors re 0-0-15+10, still;
+		apparently due to false assembly by 'ld' (or 'as'?)
+    note:	reason of size-related segfault apparently in "ld" or "ld-linux" 
+		which don't fetch the ELF-header into memory immediately adjacent
+		to ('below') the .text section, at memory base, if a certain size
+		of that section was exceded. probably, in that case "as" won't 
+		supply the required data to "ld". the header seems not at all to 
+		be findable from within the running program.
+
+
+0-0-18
+    unresolved:	{save'} &c compile un-useable binaries w. the gasp-less version
+
+
+0-0-17+8	bashforth abandoned (not really, but for this project).
+		source re-organized for compilation w.o. GASP, MASP, MAKE;
+		linked lists w. directional numeric labels.
+
+
+0-0-17+3	testing 'bashforth' to substituteing the pre-processors
+
+
+0-0-17+2 - rel 25.5.03 -
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+    modified:
+    fixed:	{:} not 'immediate'
+		'masp'.set directive renamed to '.def' because, F4 relies 
+		    on .set of AS(!) for the kernel word's linked lists.
+    other:	examples in ./d(oc): bnfparse.txt, mini-oof.txt, screenful.txt
+		more tests w. 'masp', ok
+    unresolved:
+	re below, 0-0-15+10, relocation errors.
+
+
+0-0-16+10 - rel 16.5.03 -
+    <f/f4x.scr>	{-compile} cpl/execute dependent on state@, ok.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+    modified:	sources & config adapted to the 'masp' preprocessor for AS.
+    fixed:
+    other:	./a/masp, new gasp substitute, binary for i486+; 'gasp' removed.
+    unresolved:
+	re below, 0-0-15+10, relocation errors.
+
+
+0-0-15+10 - rel 9.3.03 -
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	u/mod	was {u/}
+	r2;	{ 2rdrop ;s } replacement cpl'd by optimizing {exit} and {;}
+	s2;	{ 2drop ;s } replacement cpl'd by optimizing {exit} and {;}
+	+;s	{ 0= -exit } replacement cpl'd by optimizing {-exit}
+    modified:
+    	t;s	-> s2;
+    removed:
+	3+	re #define _p3_ in <fig4th.inc>, also supplied in <f4x.scr>
+	+dup	re #define _pd_ in <fig4th.inc>, also supplied in <f4x.scr>
+	ddup	re #define _pd_ in <fig4th.inc>, also supplied in <f4x.scr>
+	factorial re #define _fac_ in <fig4th.inc>, also supplied in <f4x.scr>
+	index	re #define _index_ in <fig4th.inc>, also supplied in <f4x.scr>
+	int3	re #define _int3_ in <fig4th.inc>, also supplied in <f4x.scr>
+	triad	re #define _triad_ in <fig4th.inc>, also supplied in <f4x.scr>
+	u/	renamed {u/mod}
+    fixed:
+	(bbi)	uvari disp data item size
+	m+	adding -ve sings
+    other:
+    unresolved:
+	re below, 0-0-14+6, relocation errors temporarily prevented by removeing 
+		some less important kernel words.
+
+
+0-0-14+06
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	2;s	runtime code for compact { 2drop ;s }.
+	3dup	and
+	3drop	provisional for real numbers (for the 'bh' program)
+	t;s	was 2:s, { sdrop sdrop ;s }.
+    modified:
+	2;s	new name {t;s}
+    fixed:
+    other:
+    unresolved:
+	apparently, ld/ld-linux FAULTS, dependent on assembled code size! 
+	results to false memory set-up. i.e. ELF-header suppressed, memory 
+	data image begins at <Z>, origin at 08049000 instead of 08048000.
+	re '////' markers in file <fig4th.S>.
+	or, false relocation of {voc-link} may be the - yet un-clear - reason.
+
+
+0-0-14+04 - 23.2.03 -
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	2;s	runtime code for compact { sdrop sdrop ;s }.
+	d;s	was drops;
+	s;s	runtime code for compact { swap drop ;s } by { sdrop ;s }.
+	r;s	runtime code for compact { rdrop ;s }.
+    modified:
+	MConfig	PREFIX variable added, dft '/usr/local'
+	drop;s	renamed {d;s}
+    fixed:
+	dgcd	abs values conversion, <f4x.scr>
+	edlin	default string display position
+	see	wrt words' end (segv after {d;s} termination, &c)
+    other:
+    unresolved:
+
+
+0-0-13+13...0-0-14+01 - rel 16.2.2003 -
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	v>	convert vmem address to disp wrt vmem base
+	[bbi]	was {bbi}
+	??	in {root} voc, short substitute for {where} editor word: 
+		    scr, line, char no. at cpl error occurrence.
+	0>	(for the editor, f4e.scr)
+	bs	emit back-space (code 8)
+	ddup	{ dup dup } - for the editor, f4e.scr
+	dir	file open mode modifier
+	edlin	[expect], w. edittable default string
+	mkdir	sycall 
+	sdup	{ swap dup }
+	vcons+	alterable increment
+    modified:
+	>v	was >vmem
+	bbi	uvari-deferred, dft {[bbi]}, {bye} executes { 0 bbi }
+	e\stg	more special codes
+	forget	handler ref. block in vmem; xec frees vmem until hnd-blk address - 
+		a forget handler is currently the only means to freeing vmem space.
+	fposre	non-existent channel ref returns EINVAL (-22).
+	help	scans glossary, then both screenfile-'drives' if open, then f4x.scr.
+	vlist	one word/line if max-xy line width figure < 2, i.e. redirected &c.
+    fixed:
+	>input, input>
+		@context, @current saved by disp wrt vmem.
+	+place	prepending mode trailing <nul> (f4x.scr)
+	error	returned i/o parameters
+	is	de-activation by { 0 is -deferredword- }
+	is<	if called by compiled code
+	to-stg	&c, compiling (f4x.scr)
+    other:
+	f4x.scr	ref to vmem, current, context &c, modified to useing v> and >v.
+    unresolved:
+	alarm	segv if [alarm] vectored to a routine which {emit}s.
+	dstack	{csp} referece invalidated due to dstack re-location if too many 
+		intermediate cells pushed; could be fixed w. ref by disp wrt @s0
+		which also would dispense w. required adjustment for local data.
+
+
+0-0-13+10
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	c!+	sto byte, increment address
+	and!	AND into memory cell
+	or!	OR into memory cell
+	xor!	XOR into memory cell
+	chain	begin interpreting from sequential file, re {end}
+	end	optionally, early terminate sequential file input
+	dr!	by flag value select dr0/dr1
+	dm*	signed mul double by sing, treble product
+	gcd	sings greatest common divisor, cpl'd if _sqrf_ switch defined
+	m*/	signed mul double by sing, divide by sing, ret double quotient
+	uqd/mod	unsigned quad by double, ret double qot & rmd 
+		cpl'd if makefile-vari _slb_ defined and =/= 0
+	alarm, (al), [alarm]
+		programmable SIGALARM handler:
+		user-deferred execution by {[alarm]}, dft {bel};
+		hnd xec pfa reference by uvari {(al)};
+		by given no. of seconds delayed syscall, {alarm}.
+    modified:
+	(bits)	new flags: bit#0 SIGWINCH received, #7 input by evaluate
+	>input	additionally stores @(bits) and 1st 4 channel reloc indices
+	input>	modified accordignly (re >input)
+	abs	faster
+	cfa, lfa, nfa
+		conversion from pfa adjusting to cell sized disp of words w. a 
+		<dodoesgreat> 2nd-ary cfa. {pfa} remains unchanged!
+	pfa+	converts from standard pfa or nfa to displaced pfa, if applicable
+    fixed:
+	cv, wv,	addressing
+	md/mod	sign of qot
+	f"	compiling mode (in f4x.scr), local mem pre-allocation
+	using	{flush} _before_ opening the new file
+	v	ref to hi-level def'd voc
+	vfind	address conversion, (in f4x.scr) 
+    other:
+	f4ans.scr	ANS-Forth compliance:
+		CORE/-EXT, BLOCK/-EXT, DOUBLE/-EXT, TOOLS/-EXT
+		EXCEPTION/-EXT, FLOAT/-EXT not supposed to be implemented
+	debian	'menu' files
+	dgcd	doubles' greatest common divisor, in <f4x.scr>
+    unresolved:
+
+
+0-0-12+18..26 - rel 13.1.2003 -
+	(cvs faults, again, no intermediate version changes)
+    <f/f4x.scr>
+	f"	new
+	fname	extended to searching user suplied path, last.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+	F4MAGIC	string for the linux <file> command, re file <./d/magic>.
+    new:
+    modified:
+    fixed:
+	forget	handler execution words sequence/reference
+    other:
+	binaries compiled/tested w. linux 2.4.19 kernel
+    unresolved:
+
+
+0-0-12+16
+    - 20...27.12.02:
+    - new linux inst. because of corrupted system due to faults in lx 2.4.20 
+      ext3 fs, several attempts to cvs insertion w. no f4 source changes.
+
+0-0-12+
+    <f/f4x.scr>
+	is@	ref to uvari deferred fixed
+	slist: slist@ slist#
+		previously named enum:, enum@, enum#; renamed because 
+		fundamentally different to the rsp. "C" construct. 
+		"C"-ish mode by combination w. {associative:} or {case:}.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	(see)	{see} by pfa - for f4x.scr <debug>
+	alchp	heap-mem allocation
+	c@+	fetch byte and increment address
+	c+@	signed add byte at address to address
+	c>pfa	convert cfa to corresponding pfa
+	mmalchp	heap-'device' allocation entry
+	mmrechp	heap-'device' de-allocation entry
+	rechp	heap-mem de-allocation
+    modified:
+	--	synonym {\}, can also be used to introducing a comment line
+	see	to continue over intermediate {exit}s
+    fixed:
+	mod	was operating as {/}
+	defer, udefer
+		default stored by pfa
+    other:
+    unresolved:
+	forget-handler yet to adjust for xec of dedicated handler
+
+
+0-0-11+ - rel - 15.12.2002
+    <f/f4x.scr>
+	alchp, rechp, sysheap, syshnd
+		memory management group of wordset (not complete)
+	associative:
+		ret index to a cell value in a numeric list
+		can be compiled into a word or, as an independent, named defn.
+	range:	ret range index by cell values in a numeric list
+		can be compiled into a word or, as an independent, named defn.
+	is@, is? fetch/display execution cfa-s of deferred words
+	sysheap	lload-key for xt'd basic host system memory allocation words.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	forget:	per word assignable forget handler, by names
+	[forget] forget handler assignation by pfa-s
+		a word may multiple forget handlers be assigned to.
+		hi-level aequivalents to {forget:}, {[forget]} in <f4c.scr>.
+	ermax	signed abs greatest, unsigned lowest linux system error code.
+    modified:
+	-l, -wl, lword?
+		immediate
+	else	{ exit else } and { drop exit else } compiles 
+		{ ;s } and { drop;s }, rsp; dispensing w. {branch} after {else},
+		substituting {else} w. the rsp {endif} execution, de-activating 
+		the next, corresponding {endif}.
+	endif	when receiving zero instead of the reference address, is a noop.
+    fixed:
+	forget:	hnd disabling after {forget} execution on the rsp. word
+    other:
+    unresolved:
+
+
+0-0-10+
+    <f/f4x.scr>
+	enum:	compiled/named indexable strings list.
+	get-order, set-order
+		fetch/store vocabularies order and, context and current.
+	source	current input source and max. count
+	vp, vb	ucons, substitute { (vp) @ } and { (vb) @ }.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	drop;s	{ drop exit }, { drop ; } compacting runtime, in {hidden}
+	ll	loop limit by index, in a do..loop
+	r+	compiler word, copy next cell from code-body to @tos.
+	wordlist
+		basic vocabulary defn, provisional for 'struct'ures, &c.
+		as {vocabulary} but, execution won't modify search order nor 
+		defining vocs and returns the rsp. voclink address to @tos.
+	[see]	user definable, deferred extension to {see}.
+    modified:
+	;	{ drop ; } compiles { drop;s }
+	>body	adapts itself to words defined w. {does>}, i.e. ref. to pfa+4.
+	exit	if after {drop} compiles {drop;s}.
+    fixed:
+	forget, empty
+		de-allocate dictionary memory
+	id+, see
+		-bra, +bra included in branch disp detection
+	ni	loop index
+	vallot	while relocating, re vocabulary
+	vocabulary
+		new vocs initial link wrt vmem fixed, extended by an additional 
+		dummy header in dictionary linked to dictionary word-header:
+		    [ voc word-header | pfa ][ short dummy-header ]
+					^-- pfa <--.
+		dummy:	[ ff,81,20,ff ][ -8:disp to pfa ] [ -7:disp to nfa ]
+			    | ^------------------------------------'
+		    initial voc-top in vmem set to dummy dictionary-nfa.
+		NOTE: kernel vocs w.o. additional header since not required.
+		should be set up equally, failed due to AS/GASP deficiencies.
+    old: (previous extns, not mentioned)
+	+dup	dup if > 0
+	0dup	dup if = 0
+    unresolved:
+    	rskip	single char to skip at last post returns trailing two chars stg
+
+
+0-0-9+29 - rel - 1.12.2002
+    <f/f4x.scr>
+	elf!	lload key for the group of Linux/ELF related words and {save'}.
+		L4-program stored w. ELF- and two program headers, 'stripped'.
+	save'	4th word & lload key for minimal, required words for {save'}.
+		besides zero count given in elf header, <readelf> emanates the 
+		'error' message "unable to read in 40 bytes of section headers"
+		unless size zeroed, too; and, <ALD> falsely denies accepting 
+		a program w. 'e-shoff' set but zero count of section headers.
+		{save'}-ed programs execute correctly, though....
+	w	display words of equal definition type.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	[-->], [\], [atxy], [xy], [x]
+		formerly header-less, deferred words' defaults, in {hidden}.
+	ch-cons	flag whether a channel is a terminal, from cdt data, no syscall.
+	is<	revert to default of deferred word (also for sing cons/vari)
+    modified:
+	io-cons	in {linux} voc.
+    fixed:
+	+continue false disp, @in:=@in+64, if word ends at last-1 column
+	Makefile <make..> always compiles the recent glossary
+    other:
+
+
+0-0-9+10 - bj 25.11.2002
+    <f/f4x.scr>
+    case:	safe(!), compiled/named positional cases list.
+    save'	besides zero count given in elf header, <readelf> emanates the 
+		'error' message "unable to read in 40 bytes of section headers"
+		unless size zeroed, too... - program executes correctly, though.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	2>>,2<< double cell shift right/left, in {hidden}.
+	=if	was {?if}
+	-execute execute cfa if unsigned greater than {cold}-cfa; {hidden} voc.
+	slb	optional: max scaling shift count of a +ve double, in {hidden}.
+    modified:
+	<ctopnfa> faster
+	?if	new name {=if}
+	see	more safe wrt. unsuitable data
+    fixed:
+    other:
+	./u/f8ed/*
+		lib4th full-screen block-file editor, L4 forth & editor source.
+
+
+0-0-8.. - 22.11.2002
+    <f/f4x.scr> save F4 program as Linux/ELF executeables by hi-level {save'}, 
+		cpl'd w. { lload save' } or, { lload elf! } w. elf header defns.
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	>body	ref into vmem by pfa
+	?if	{if} by comparison of two items @tos.
+	|loc	basic local memory de/allocation (hi-level words re f4c.scr);
+		{use-loc} &c can be dispensed wth, due to the re-organization.
+	ndup	duplicate a block of cells @tos
+	pow2	true flag if parm is a power of two
+	prt	2nd-ary output channel
+    modified:
+	<nul>	word to {local} voc -> compile speed improved by ca. 8%
+	fread, fwrite
+		extended for r/w of a single char
+	l0	user constant, set by {|loc} to base addr before de-/allocation;
+		dispensing w. requirement of pre-allocation by {use-loc} &c.
+	literal	two literals immediately after eachother compiled as a dliteral.
+	unmapf	shorter
+    fixed:
+	<nl>	double <nl>-s at eof of a script -> none required (v0.0.7).
+	>input	@s0 not saved (since relocatable by stack useage).
+	cons+	re-defining w. "is" (unless in saved binary).
+	fwrite	ret count of sent bytes
+	l-find	ret channel no. if rsp. screen-file already open.
+
+
+0-0-7..  vmem ref in schreibbaren speicher, secundaerdefinition fuer vocabulare
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	3+	because of frequent use, for 4-alignement, voc-name length, &c.
+    modified:
+	voc.	pseudo word-header of vocabulary linkage base w. ref to pfa of
+		name header wrt forth code base address, as by {0 >4th minus}, 
+		in additional cell at voc-block pfa + 8:
+		b[-1] nfa:b[$81,$20,-1] d[top] d[vocl] d[2nd] d[flg] d[back-pfa]
+		{ ' vocname dup lfa swap @ >vmem pfa 8+ @ = } returns true.
+	voc-link &c
+		vocs chain in vmem; find, forget, vocabulary, 2nd-voc ok.
+    fixed:
+
+
+0-0-5..0-0-6..
+    mayor modifications to enabling Linux/ELF binaries w. {save"}
+
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	(vp)	uvari, pointer by disp to @(vb) into variables' memory block
+	(vtr)	vari w. fd for terminal reset, invalidate (sto -1) to suppress.
+	integer	alterable, immediate constant which compiles a literal.
+	stdin, stdout, sterr, kbd
+		redirected channel numbers, by constants, for use w. 'chan'.
+	cv, v,	compile byte, cell into variables' memory. in {hidden} voc.
+	p>v	vari mem address by pfa; data storage of variable, constant etc.
+	ucons	self-fetching user-vari; set/modify w. 'is' or 'to'
+	udefer	defeered word w. xec parameters in user vari area.
+	-vallot	extend variables' memory by sufficient amount to providing 
+		at least the given no. of bytes. in {hidden} voc.
+	vallot	de-/allocate a number of bytes in variables' memory, 
+		adjust @(vp) disp into v-mem, accordingly. in {hidden} voc.
+	vhere	1st free address in variables' memory. in {hidden} voc.
+    modified:
+	defining words' data ref by disp wrt @(vb) to enabling generation 
+		of Linux/ELF executeables w. 'save"'.
+	environmental strings, arguments & rsp pointers in write-protected memory
+	cmo	per cell sized disp addressing uvari variant
+	constant
+		alterable with 'is', by disp to vari-mem.
+	cons	removed
+	cons+	non-alterable value, compiles a self-adding literal.
+	deferred
+		execution vec stored to vari-mem, by ref @pfa w. disp wrt @(vb)
+	dstack allocation,
+		dstack is last mmap block to minmize base address relocation
+	enclose	includes low ctrls if scanning for <bl> delimiter, for 
+		<tab> between 4th words.
+	is	adapted to modified memory set-up; stores to words defined with
+		    'defer', 'udefer', 
+		    'constant', 'ucons', 'variable', 'user'
+		    '2constant','2variable'
+		    'cons+' (unless in a binary which was generated w. 'save"')
+	to	other name for 'is', functionally identical.
+	removed from uvari because 'is' can be used w. user-deferred words:
+	    (emit), (type), (?key), (key), (expect), (abort), (atxy), (xy)
+	variable by disp @pfa to vari-mem
+    fixed:
+	(up)	disp @(up) in sync w. uarea for 'user' &c definitions, 
+		1st unused address is { up @ (up) @ + }.
+	>	was >/ result
+	error	messages sent to <stderr>
+	fwrite	ret count of sent bytes/error code
+
+
+0-0-4+4
+
+    <i/fig4th.inc>
+    <s/fig4th.S> source and Makefile modified to compiling w. gcc 2.95,
+=>		%NWSP% inserted at several places, in <fig4th.inc> and <fig4th.S> 
+		for which a "sed" command scans from within Makefile to removeing 
+		by old (2.95..) version of GCC praeproc. inserted blanks, each(!) 
+		of which the most stupid(ly programmed) GASP would take as macro
+		argument delimiters, thus corrupting any data references in the 
+		assembly source. - after the change F4 compiled successfully, 
+		with gcc 2.95 and v2.10 (2.9?) binutils.
+    <Makefile>	installation dependent configureable part separated to MConfig
+    new:
+    modified:
+	#!	deferred (F4 0-0-4+2)
+    fixed:
+	-trailing if all blanks
+
+
+0-0-4+3 - 29.10.2002
+0-0-3+36 ... 
+    <i/fig4th.inc>
+    <s/fig4th.S>
+	initial command-line args execution, passive args may follw after "--";
+		uvari "(argp)" and args count adjusted, accordingly, to the 
+		args remaining after delimiting "--", if present, else no args,
+		no. & size of args not limited, tib range extended as required 
+		(tested up to the by 'bash' implied maximum of 128K bytes).
+	file	mapping words in 'linux' voc.
+    new:
+	=/=	tf if @tos =/= @nos
+	c->s	sign extend 8bit-byte into sing.
+	ch-map	mapping parameters of an mmapped channel (size,address)
+	chmap	channel identifier of mmapped, closed device.
+	chmid	channel identifier mask notifying an mmapped, open device.
+	chmax	no. of available file/device channels (extended to 32).
+	flush	sto content of 'update'd block-buffers back to the rsp. source.
+	msync	update file from mmapped memory, w. ASYNC and INVALIDATE flags.
+	mmapm	pass mode and access bits, otherwise as 'mmapf'
+	p@, p!	cpu i/o port access words (8bit, 16bit, 32bit variants),
+		compiled into kernel if <_pa_> cpl switch =/= 0.
+	sover	{ swap over }
+	unmapf	un-map mmapped file by channel no; open channel remains open.
+    modified:
+	(tb)	tib memory separated from block-file buffers mmapped block;
+		"(tb)" w. address of tib memory bottom, size at next uvari.
+	(db)	dictionary bottom address, "(dt)" removed, next uvari w. size.
+	d. &c.	check whether @base within valid range.
+	id.	decompiles text after 's"'
+	mmapf	'shared' mode if w/o or w/r, 'private' if r/o file.
+	uc-lc	32 bytes bit-flags table in writable memory, @(uclc).
+	uvari	newly ordered, for (tb) & <uvsiz> position in uvari.
+	<uvsiz>	uvari at "u0" 4+, size of uvari memory mmapped block.
+	?terminal
+		operating on mmap-ed devices
+	v	displays name, cfa and vocabulary where the rsp. word belongs to,
+		searching all vocs, independently of chained context.
+    fixed:
+	-trailing if stg just blanks
+	[number]  if 1st char not a digit
+	local	always searched 1st, independently of chained context.
+	expect	echoing modes. un-set <mcons> bit-flag in cdt disables echoing.
+	fread	received chars count if mmaped and delimited, cdt posn <rnum>.
+	*/mod	signed intermediate prod, ovf values and sign
+	/mod	ovf sign
+	md/mod	ovf values and sign
+
+
+0-0-3+34 - 12.10.2002 -
+    <s/fig4th.S>
+    new: user vari, in "hidden" voc.:
+		(emit), (type), (?key), (key), (expect)
+	 defaults, in "hidden" voc.:
+		[emit], [type], [?key], [key], [expect]
+    modified:
+	factorial double of a sing
+	[number]  '%' postfix left to cpl-switch "_vh_", 'p','e' added
+	m/mod	trivial case, div/1, and div/0 separated. sighnd remains in
+		case of catching obscure cpu 'overflow' conditions required.
+	md/mod	trivial case, div/+-1 separated.
+	error, abort
+		additionally, leading the text @here display @last word.
+	udsqrt	square root of a double.
+	vt?	setting the <bterm> channel flag-bit, other words won't.
+	user-deferred:
+	    emit	also by "cr", "tab", "space", "g0", "bel", "ptype"
+	    type	also by "print"
+	    ?key, key	also by "?esc"
+	    expect	also by "query"
+	    xy, at-xy
+    fixed:
+	[number]
+		{ "- } returns the character code of '-', -"(char(s) for -ve.
+	expect	tests for echoing type on false channel
+	l-load	flag left by terminal part, implicitely appplies to 'lload',
+		too. dstack parameter passing enabled for all 'load'ing words.
+	tdb	debugging modes 1..3
+    deferred words, per v0-0-3+27:
+	edit (ok) \ (abort) --> <the nul-word> at-xy xy b@ b! 
+    user-deferred
+	[inter] ?key key expect type emit
+    removed:
+	[db]	additional debug vector
+    <f/seq2blk.f4>
+		working w. current F4 version. (io)
+
+
+0-0-3+17
+    <i/fig4th.inc>
+		asm control defns separated from main assembly.
+    <s/fig4th.S>
+    new:
+	vt?	stdout terminal type query, ret > 0 if vt100, vt1002.
+    modified:
+    fixed:
+	init	channels setup, stdin/stdout configuration, reset.
+		console output w. piped/redirected stdin thus fixed.
+	l-find	if word not found
+	l-load	and variants wrt zero filename which is not the default f4x.scr
+	xy	channel selection/test
+
+
+0-0-3+0...
+
+    <s/fig4th.S> asm & F4 system definitions separated into file <i/fig4th.inc>
+    new:
+	!!	exchange contents of two cells in memory
+	?depth	'conditionals not paired' error (19) if unsufficient stack depth
+	d-	subtract doubles
+	l-find	returns file name string and scr where word found, ready for
+		'include' or 'using list' etc, also used by 'lload', 'l-load'.
+    modified:
+	Makefile simplified, 'extname' & 'sstrip' programs removed
+	bbi	was bye-r
+	-compile removed
+	expect	call to io-cons replaced by testing stdout channel flags.
+	flen, fposre
+		sto 64-bit file-size/-ptr to cdt but, return a sing, as before.
+		read 64-bit fptr: ( ch -- d.fps ) { ch cdt 24 + 2@ }
+		and, file size:   ( ch -- d.fsz ) { ch cdt 36 + 2@ }.
+		by multiple calls to sys _llstat because sys fstat is unreliable.
+	fstat	affects buffer and the m.s. 16 bit of channel type flags, only,
+		fpos in cdt un-modified, preventing false entries from "fstat".
+	quit	only on entry testing for stdin/stdout by terminal, channel 
+		flags tested while within interpreter loop.
+	open	setting channel type flags (console &c) and file size
+    fixed:
+	stg,	@cmc:=0, which also affects the other string compiling words.
+	s=	inner, remaining count control (segault at end of mmapped mem).
+
+
+0-0-2+61, 29.9.2002
+
+    <s/fig4th.S>
+    new:
+	cmo	uvari w. flag whether to branches optimising(-1) or not(0).
+	if-nfound, if-found
+		conditional compiling until eol, if word not/found.
+	+continue
+		screen-file conditional compiling control.
+	if, while, until
+		preceding "0=", "0<", "0< 0=" optimized to the rsp. branch code.
+	;	converting reference to last word to a branch into the code body 
+		if a colon definition, also resolving 'end recursion'.
+	lload	short form of "l-load", for current or default screen-file, rsp.
+	sh	system shell command execution.
+	thru	squentially load a range of screens, 
+		optionally cpld if assembly switch _thru_ =/= 0.
+    modified:
+	.s	internally, all regs preserving, useable for kernel dbugging.
+	error	additionally displays name of @last word.
+	edit	defaults to initially loading the block-file line-editor.
+    fixed:
+	l-load	wrt "0" argument for the path name.
+
+
+0-0-2+38...
+
+    <s/fig4th.S>
+	\	deferred, in kernel, by dft deferred to headerless 
+		{ 0 word } if blk@ = 0, else in:=l/c-mod(@in,c/l)+@in
+	-->	deferred
+	[-->]	default for deferred "-->"
+	l-load	'library load', load given word from given or current screenfile
+	lword	31+count bytes string-vari w. word pattern to find by 'l-load'
+	lword?	flag whether a word is currently being "l-load"ed.
+	-l	flag whether following name is the word currently "l-load"ed
+	if-true	for conditional compiling, discard till eol if ff received
+	s"	cpl/xec string which returns count and address
+    <f/f4x.scr>
+	colour	and othr defining/executing words for vt control
+    <f/f4c.scr>
+		compatibility reference file, w. standard fig-forth hi-level 
+		substitutes to F4 specific extensions.
+
+
+0-0-2+33, 18.9.2002:
+
+    <s/fig4th.S>
+	[number] trailing 'k' multiplies by 10^3, 'K'by 2^10,
+		postfices 'm', 'g', 't' for 10^6, 10^9, 10^12, '%' div by 100,
+		'M', 'G', 'T' multiplier postfices for 2^20, 2^30, 2^40, rsp.
+		('t', 'T' valid for doubles, only)
+	lc-depend, lc-ignore
+		set letter-case dependency for text comparing words; applies to 
+		"-find" variants, "skip", "rskip", "scan", "rscan", "s=", "match" 
+    <f/f4x.scr>
+	help	on kernel words, from mmap-ed 'glossary' file.
+	locals	clean-up
+	readml	&c, text input from memory
+
+
+0-0-2+22, 14.9.2002:
+
+    <s/fig4th.S>
+	abort	won't change the search order
+	warm	either...
+	cold	does & reverts to 'forth', abandoning all non-kernel definitions.
+	dropd	{ drop dup } 
+	docdir	path to F4 docs installation
+	libdir	path to F4 auxilary files installation
+
+
+0-0-2+15:
+
+    <s/fig4th.S>
+	<c>reate and <vocblock> macroes (much) simplified.
+	;	modifying last cfa to branch into rsp. word if colon defn.
+	at-xy	set cursor posn
+	b.	temp. base numeric output w. { ( n base -- ) b. }.
+	cmc	compiled words counter, reset w. any structure entry or end.
+	s=	string comparison.
+	match	string search.
+	praefixed, temporary base numeric input:
+		0x, $ (sedcimal); # (decimal); &, @ (octal); % (binary);
+		"-" sign may precede or, except w. 0x, follow a praefix;
+		and unsigned " (multi-byte char), ^ (control code).
+	signal handlers:
+		fpe	ret +/- max. integer
+		quit	'warm' re-start (key CTRL"\" or "print"), e.g.
+			to w.o. loss of code breaking an endless loop.
+		segv	tries recovering from segfault
+			1st:'warm', 2nd:'cold', then 'bye'
+		winch	rfsh actual console window sizes.
+	xy	fetch cursor posn
+    <f/f4x.scr>
+	\, \\	comment till end of line, end of screen
+	if-true, if-found, if-nfond
+		conditional compiling
+	+continue advance by no. of lines (blocks)
+	abort"	with error message
+	?depth	check for required stack depth, "error" if not sufficient
+	>loc	local memory allocation
+	loc>	ditto, de-allocation
+	:locals	initiate by index accessible local variables
+	locals;	discard local variables
+	l@, l!	fetch and store local vari
+	words	all vocabularies' words
+	order	display current serach sequence
+	vocs	display all defined vocabulary names
+	place	store counted/asciz string
+	+place	pre/append to stored string
+	c+place	pre/append a multi-byte char to stored string
+	stg	constitute a string variable
+	+to-stg	pre/append to string variable
+	c+stg	pre/append a multi-byte char to string variable
+	e\type	w. local memory, and {e\print}
+	evaluate nestable and words defining, also executes while "load"ing
+	.. and more .. re file.
+
+
+0-0-1+129, 3.9.2002:
+
+    <s/fig4th.S>
+		vocabularies + chained 2nd-ary search order ok,
+		":" back to standard opr, setting @context from @current.
+
+
+0-0-1+116, 31.8.2002:
+
+    <s/fig4th.S>
+	":"	<Xcolon> - does not store "current" into "context".
+		otherwise, "-find" searching the set vocabulary, only, and 
+		a sequence like "vocname definitions" would hide any other!
+	"vocabulary"
+		w. modified ":" now ok.
+
+
+0-0-1+114, 31.8.2002:
+
+    <s/fig4th.S>
+		all but {chain"} and {save"} tested + ok.
+		"vocabulary" yet in-active, a 'noop'.
+		kernel almost all lo-level (because prim were easier to debug)
+    <figed.scr>
+		fig-forth style line editor w. help-screens - re "help", "eh"
+    <f4x.seq>	F4 extensions (examples)
+		string storeage, concatenation to beginning/end,
+		self fetching string variables,
+		execution from supplied string, by "evaluate"
+    <seq2blk.f4>
+		convert stream to screen-file.
+
+
+#################################################################################
+# F4, hp'2002, Changelog <eof>

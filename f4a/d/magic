@@ -1,0 +1,51 @@
+# --- F4 Forth local 'magic' data for the file(1) command.
+# --- e.g, append to /etc/magic
+0		string		\177ELF	ELF
+>4 		byte            1	32-bit
+>>5 		byte            1	LSB
+>>>16		leshort         2	executable,
+>>>>18		leshort         3	Intel 80386,
+>>>>>20		lelong          1	version 1
+>>>>>>7		byte            0	(SYSV),
+>>>>>>7		byte            3	(GNU/Linux),
+>>>>>>116	string		%F4QF%	F4 Forth
+
+# f4 screen-file sei alles mit "=== < F4 " in der ersten haelfte der ersten zeile von scr 0
+0		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+1		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+2		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+3		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+4		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+5		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+6		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+7		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+8		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+9		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+10		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+11		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+12		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+13		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+14		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+15		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+16		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+17		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+18		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+19		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+20		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+21		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+22		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+23		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+24		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+25		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+26		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+27		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+28		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+29		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+30		string	\075\040\074\040F4\040	Text, 8bit printing characters, F4 Forth screen-file
+# oder jeweils ab anfang der ersten zeile:
+0		string	\ -->\ ****	Text, 8bit printing characters, F4 Forth screen-file
+0		string	\ -->\ ====	Text, 8bit printing characters, F4 Forth screen-file
+0		string	-->\ ****	Text, 8bit printing characters, F4 Forth screen-file
+0		string	-->\ ====	Text, 8bit printing characters, F4 Forth screen-file
+0		string	\ (\ ====	Text, 8bit printing characters, F4 Forth screen-file
+0		string	\ (\ ****	Text, 8bit printing characters, F4 Forth screen-file

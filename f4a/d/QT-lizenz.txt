@@ -1,0 +1,122 @@
+
+     ________________________________________________________________________________________________
+   
+   english -> QT-license.txt
+     ________________________________________________________________________________________________
+   
+                                     THE Q PUBLIC LICENSE Version 1.0
+                     Nutzungserlaubnis fuer offengelegte und frei verfuegbare Software
+                                 Copyright (C) 1999 Trolltech AS, Norway.
+                   Es is jedermann gestattet, diesen Text zu copieren und weiterzugeben.
+     ________________________________________________________________________________________________
+   
+   Worte:
+     * Lizenz:
+       Nutzungserlaubnis.
+     * Patch:
+       Maschinenlesbarer Klartext zur Veraenderung von Programmen zur Rechnersteuerung in Quellen- 
+       oder Binaerform.
+     * Quelltext, Quelle:
+       Maschinenlesbarer Klartext zur Erzeugung von Programmen zur Rechnersteuerung.
+     * Software:
+       Programm zur Rechnersteuerung in direkt maschinenlesbarer Form ("Binaerform"), im hier
+       vorgelegten Text einschliesslich zugehoeriger Beschreibungen, der Quellen und anderer Texte.
+     ________________________________________________________________________________________________
+
+
+   HINWEIS: Abweichend von Absatz 6 des Lizenztextes unterstehen Programme, die von der F4-Sammlung 
+	    nur Gebrauch machen, allein der Verfuegung durch deren Autoren.
+   
+   Die Uebertragung in's Deutsche ist seitens Trolltech nicht autorisiert, sie betrifft nur die "lib4th"
+   und "F4" Softwaresammlung des Uebersetzers, der zugleich auch hierauf Urheberrechte derselben Art wie
+   im Original geltend macht:
+   
+                              Copyright (C) 2003 h-peter recktenwald, Berlin
+		    o.g. Copyright der Trolltech AS betrifft allein den Text dieser Lizenz.
+
+     ________________________________________________________________________________________________
+     ________________________________________________________________________________________________
+
+
+   Zweck dieser Lizenz ist Sicherung der Rechte auf Aenderungen und Weitergabe von Programmen und
+   zugehoeriger Software rsp. Texte in vollstaendig offengelegter Form sowie frei von Miet-, Leih- 
+   oder Lizenzgebuehren oder der Erhebung eines Kaufpreises.
+   
+   Diese Lizenz gilt, sofern der betr. Urheber oder Copyright-Inhaber einen Hinweis in die Software
+   aufgenommen hat, demgemaess jene zu den Bedingungen der "Q Public License version 1.0" verteilt wird.
+   Solchermassen lizensierte Software wird im folgenden kurz Software genannt. Dieser Lizenz unterliegen
+   Aenderung und Weitergabe der hierdurch lizensierten Software, ebenso die auf der hierdurch
+   lizensierten Software basierende Nutzung durch Dritte und Entwicklung freier Software.
+   
+   Wo die genannten Bedingungen nicht vollständig anwendbar sind oder deren uneingeschränkte Gültigkeit 
+   bestritten wird, ist die Lizenz in Gesamtheit nicht gewaehrt.
+
+                                            Zugesicherte Rechte
+                                                     
+     * 1. Zustimmung zu der Lizenz und Einhaltung derselben vorausgesetzt, werden Ihnen die im folgenden
+       aufgefuehrten Rechte uebertragbar zugesichert. Weitergabe der lizensierten Software in
+       beliebiger Form und auf beliebigem Wege ganz oder teilweise oder von Software, die diese nutzt,
+       gilt als Anerkennung dieser Lizenz.
+       
+     * 2. Es ist Ihnen gestattet, die Software in unveraenderter Form zu copieren und weiterzugeben,
+       sofern das vollstaendig und insbes. unter Einschluss der unveraenderten Vermerke betreffs
+       Urheber- und sonstiger Rechte in demselben Zustand geschieht, wie sie vom urspruenglichen
+       Entwickler veroeffentlicht wurde.
+       
+     * 3. Unter den folgend genannten Einschraenkungen duerfen Sie Aenderungen an der Software vornehmen
+       und jene in einer vom Original getrennten Form weitergeben, etwa in Gestalt von "patches":
+          + a) Jegliche Notizen betreffs rechtlichen Vorbehalts, "Copyright" etc, muessen unveraendert
+            erhalten bleiben.
+          + b) Gleichartig lizensierte Weiterverwendung vorausgesetzt, hat der urspruengliche Entwickler
+            unwiderruflich und frei von irgendwelchen Abgaben das uebertragbare Recht, Ihre Aenderungen
+            ohne ueber die eigenen Kosten der Datenuebermittlung hinausgehende Aufwendungen zugestellt
+            zu bekommen und sie in kuenftige Versionen der Software aufzunehmen.
+       
+     * 4. Unter den folgend genannten Einschraenkungen duerfen Sie die Software in einer im Rechner
+       unmittelbar ausfuehrbaren Form - in "Binaerform" - weitergeben:
+          + a) Diese Lizenz ist der Sammlung in leicht auffindbarer Form beizufuegen.
+          + b) Sie muessen sicherstellen, dass jedem Empfaenger der Binaerform auch der vollstaendige
+            Quelltext dazu einschliesslich aller Aenderungen ohne ueber die Datenuebertragung
+            hinausgehende Kosten zur Verfuegung steht, und eine leicht auffindbare betreffende Notiz
+            beifuegen.
+          + c) Sie muessen sicherstellen, dass alle in der Binaerform vorhandenen Aenderungen dieser
+            Lizenz untergeordnet sind.
+       
+     * 5. Sie duerfen beliebige Versionen der Software compilieren und mit Programmen verbinden
+       ("linken"), sofern nicht andere Rechte letzterem entgegenstehen, und rechtmaessig entwickelte
+       Software damit betreiben.
+       
+     * 6. Sie duerfen Programme und mehrfach verwendbare Teilprogramme entwickeln, die von der hierdurch
+       lizensierten Software gebrauch machen, wobei deren Weitergabe unter folgenden Voraussetzungen
+       gestattet ist:
+          + a) Sie stellen sicher, dass jedem Empfaenger solcher Software in Binaerform auch der
+            vollstaendige Quelltext dazu ohne ueber die reine Datenuebertragung hinausgehende Kosten zur
+            Verfuegung steht.
+          + b) Jedem Empfaenger wird in einr mit dieser Lizenz uebereinstimmenden Form ausdruecklich
+            und kostenlos Verwendung, Aenderung und Weitergabe der Originale sowie geaenderter Versionen
+            sowohl in Binaerform als auch als Quelltext samt Dokumentation nach deren eigener Wahl
+            gestattet und gegenueber niemandem eingeschraenkt.
+          + c) Wenn das Betreffende nicht allgemein frei zugaenglich ist, machen Sie dem Entwickler der
+            urspruenglichen Software davon Mitteilung und stellen ihm auf Anforderung eine Copie zur
+            Verfuegung.
+       
+                                            Haftungsausschluss
+                                                     
+       Keinesfalls sind die urspruenglichen Entwickler der Software oder Inhaber von Rechten darauf fuer
+       Folgen beliebiger Verwendung verantwortlich zu machen, einschliesslich unmittelbarer und
+       mittelbarer Schaeden oder Folgeschaeden, auch wenn zuvor auf deren Moeglichkeit hingewiesen wurde.
+       
+                                      Ausschluss der Gewaehrleistung
+                                                     
+       Software und Lizenz existieren in jeweils der vorliegenden Form OHNE JEDE GEWAEHRLEISTUNG, AUCH
+       AUF ENTWURF, AUSSEHEN, HANDELSTAUGLICHKEIT ODER BRAUCHBARKEIT FUER IRGENDEINEN ZWECK.
+
+                                     Rechtsgrundlage und Gerichtsstand
+                                                     
+       Es gelten allein die Rechtsbestimmungen der Bunderepublik Deutschland und jenen nachgeordnet 
+       die der Europaeischen Gemeinschaft. Gerichtsstand ist Berlin.
+         ____________________________________________________________________________________________
+         ____________________________________________________________________________________________
+       
+                           Copyright (c) 2000 Trolltech AS. All rights reserved.
+                       Uebertragung: Copyright (c) 2003 h-peter recktenwald, Berlin.

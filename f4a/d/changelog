@@ -1,0 +1,530 @@
+#################################################################################
+	    F4 (C) Copyright 2003 h-peter recktenwald, Berlin
+---------------------------------------------------------------------------------
+started Mit Jul 24 23:45:30 GMT 2002 0-00-00+00, hp <mailto:f4@lxhp.in-berlin.de>
+---------------------------------------------------------------------------------
+re file QT-license.txt (en), QT-lizenz.txt in ./d directory
+	for Copyright and useage licensing information.
+
+PLEASE, READ THE GLOSSARY and F4-INTRO because, 
+				F4 modelled after F.I.G. FORTH but, is DIFFERENT!
+---------------------------------------------------------------------------------
+F4 development closed w. version 1-4. bug-fixes and minor corrections may follow.
+---------------------------------------------------------------------------------
+Ab version 0.1.5 neues nur noch zur unterstuetzung des buchhaltungsprogramms, 
+aus organisatorischem gruenden oder wo zweckmaeszig, ohngeachtet irgendwelcher 
+Forth-'Standards'!
+wenn es denn soweit ist, wird die zugehoerige dokumentation das programm zwar 
+erklaeren, jedoch ohne jede ruecksicht auf den kenntnisstand des jeweiligen 
+lesers - keineswegs, weil ich selber alles wueszte, allein aus bequemlichkeit!
+---------------------------------------------------------------------------------
+F4 depot	http://www.xhp.in-berlin.de/e-lhpf4.html	(en)
+		http://www.xhp.in-berlin.de/lhpf4.html		(de)
+#################################################################################
+
+re changelog-0.0.0+00-0.1.0+00
+	for previous changes history
+latest:	"make-f4s all" and, re <./d/glossary> & <./s/fig4th.S> for details.
+	chronological list of changes re file <cvslog-lN-f4g.txt>
+	reference to used Linux system calls in file <syscalls-in-f4>.
+re vt100,vt102:
+	VT-control tested w. Linux console and many X-terminal-emulators which 
+	all but console & 'rxvt' failed, due to false VT codes, bad timing &c.
+	besides, even 'rxvt' is not correctly implemented, e.g, wrt the csi 
+	ctrl sequences of esc[u and esc[s - which appear as noop-s...
+
+f4e.scr:
+	twin windows/files, 'fully featured' screen-file editor; { lload f4ed }.
+f4f.scr:
+	floating point arithmetics w. rational/real numbers; { lload f4f }.
+f4m.scr:
+	host system memory de/allocation and access; { lload f4m }.
+f4p.scr:
+	printer control and (simultaneous) printer output; { lload f4p }.
+f4x.scr:
+	standard hi-level extensions, "load"able after file opened w. "using": 
+	{ 6 load } or all words w. { lload f4 }, selectively by name w. "lload".
+
+figed.scr:
+	the fig-forth line editor, loaded by { lload f4e }.
+
+bh.scr:	basis eines programms zur kontokorrent-buchführung
+    msg.scr:	ausgabetexte dazu
+    kt.scr:	kontenplan dazu in form von forth-definitionen
+    
+f4ans.scr:
+	extensions for ANS-Forth compliance, can be loaded w. { lload f4ans }.
+f4c.scr:
+	hi-level aequivalent definitions of F4 specific words. for reference.
+
+#################################################################################
+uebertragung aus lib4th: (nur!) -ve pick hat dort einen um eins groeszeren index.
+#################################################################################
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+    modified:
+    fixed:
+    other:
+    unresolved:
+#################################################################################
+=> {emit}	ausgabe-reihenfolge per byte umkehren fuer utf8
+=> {only}	aktuelle suchfolge in @context und @current unterbrechen
+---------------------------------------------------------------------------------
+
+
+
+0-2-0+04..07 -rel- 27.1.2004
+	F4 project copied to {ftp,http}://f4forth.berlios.de
+
+
+0-1-9+08..12
+
+    new:
+	?d0=	{ 2dup d0= }
+	1and	{ 1 and }
+	-1^	-1 to the power of a sing
+	^2 u^2, d^2, uq^2, uq^
+		sqares, octuple result of sing power of a quad
+	5 tdb	stand-by debug mode
+	8pick, 8roll
+		octuple cells opr.
+	cons*, vcons*
+		multiply non-/alterable cons w. @tos
+	cswap	convert top 4 dstack cells order between little and big endian
+	dodoes, dodoes@, dodoesv
+		cons, for {see}; {see} continues w. does>-part, if applicable
+	f4ver	sedecimal packed version number to dstack.
+	nrdrop	drop n cells from returnstack
+	swap-	subtract @nos from @tos
+	-V --version
+		displays version number and exit.
+	f4f.scr:
+	    e^1	was {e}, renamed because of duplicate in {editor} voc.
+	    fl@, fl!, fl2@, fl2!
+		fetch/store local sing/double ranum, sing complex.
+	    for, next, step, limit
+		'ranum' type (f.p.) parameters counted loop construct.
+	    cos(f), sin(f), tg(f), atg(f), asin(f), acos(f)
+    modified:
+	0=/=	returns standard flag values (0,1)
+		f4ans, f4x, f4f, f4e &c screen-files modified, accordingly.
+	*, m*, u*
+		trivial cases (1,0,-1)
+	bit	returns standard flag figure (0,1)
+	lc-ignore, lc-depend
+		in {root} voc
+	see	continues into the run-time part of words which were set up by 
+		a hi-level defining word and displays the defining words' name.
+	tdb	<esc>aped debugging won't clear the data-stack.
+	tdb?	active (by asm cons _tq_)
+    fixed:
+	f4ans.scr
+		adapted to modified {chp}
+	f4f.scr:
+	    f/, /f
+		processing of -ve divisor.
+    other:
+	f4a.scr	optionally assembled kernel words' hi-level substitutes.
+	f4o.scr	radio/electronics formulae.
+	f4z.scr	complex extension to real numbers (extending f4f.scr)
+	make-f4s uninstall
+		deletes installed binary & all back-up files of bin, doc, lib.
+
+
+0-1-9+0
+    new:
+	add, mul, sub, div, muldiv
+		dummy words for {help} on the rsp. words' cathegory
+    modified:
+	f4x.scr	ref to 'fp' -> 'f.p.' for correct ref by {help fp}
+    other:
+	f4o.scr	electronic formulae
+	f4f.scr	'eta0' -> 'µ0' (my0, 'richtige' anzeige nach {g0i})
+
+
+0-1-8+16 -rel- 1.1.04
+    fixed:	debian binaries, compiled docdir, libdir
+
+0-1-8+12 -rel- 29.12.03
+    fixed:	make-f4s, access rights, variables, sudo & fakeroot execution
+		cpl'd w. knoppix & linux 2.4.22
+		...und dasselbe fuer debian 3.0.2
+
+
+0-1-7+95/96 -rel- 15.12.03
+
+0-1-7+78..
+		0.1.7 minor versions 78+ because of "cvs" and "deb" packaging, 
+		broken (by KDE compilation!) "imagemagick" routines, and other 
+		'peculiarities'...
+	fixed:
+		shell function asm() in <make-f4s> 
+		'make-f4s deb' functional (nicht fehlerfrei, aber brauchbar)
+
+
+0-1-7+0...	=> <f4b.scr>, anything else for support of 'bh' <=
+    new:
+	?0=	{ dup 0= }
+	2+!	add double into memory
+	3*	multplication by three
+	3-	subtract three
+	>us	modify string to all upper case letters
+	bv,	allocate & store (compile) multi-byte char to vmem
+	does>@	{ ..does> @.. }
+	does>v	{ ..does> >body.. }
+	dup@	{ dup @ }
+	(err)	uvari, {error} xec vec.
+	fp	voc, <f4f>, fp opr-s w. standard names, fp literals:
+		numeric input converted to ranum while {fp} voc is @context
+	lload?	lload if word not found
+	nn;	opt. runtime for { .. ndrop ;s }
+	sj=	s= w. additional arg for a character code which will aways match
+	tib@	ucons, <f4x>
+	within?	was {within}
+	within	adjusts to bounds if not within
+	wraps	adjusts to opposite bounds if not within
+	xlload?	xlload if word not found
+    modified:
+	<abort>	was header-less <doabort>
+	<quit>	was header-less <iniquit>
+	[error]	was {error}
+	error	user-deferred, by dft executes [error], re {(err)}
+	dlit, lit in {forth}
+	emitm	faster w. single-byte chars
+	literal	compiles {lit+} if {+} follows, immediately; also by {ascii};
+		analoguously {-}, {<}, {=}, {>}, {*}, {/}, {and}, {or}, {xor}.
+		any {literal}s optimization suppressed if uvari {cmo} is zero.
+	ndrop	opt. { .. ndrop ;s }
+	f4b.scr	was 'bh.scr'
+	bms.scr	was 'bhm.scr'
+    fixed:
+	(s)	16bit syscall numbers
+	-wl	empty {lword} left empty
+	at-xy	-ve co-ordinates dft to zero, ea.
+	ch-cons	wrt reloc. chan
+	devhnd	&c, sysvari by disp wrt relocatable vmem base address
+	fpos{e,re,ab}
+		returned @ecx from fpos-variants for internal calls
+	literal	{cmc} count, dlit optimization
+	lit	explicite return to NX, prevents segv while debugging
+	recurse	'immediate', return to <next>
+    other:
+	f4x.scr
+	    @order, !order were get-order, set-order
+	    @vocs, !vocs were get-vocs, set-vocs
+	    u0	with {save'}, size of uvari area doubled.
+	f4f.scr
+	    dpl set to -2 if ranum numeric input received
+	f4ed.scr
+	    cursor posn at bottom if outside of editor windows
+	f4b.scr
+	    buchhaltung (waechst...)
+    unresolved:
+	cold	might abort a just compiled f4 job - segv? most probably due to 
+		removed vocabularies being referred for the 2nd-ary search order;
+		{warm} and {empty} by their own execute w.o. faults. 
+
+
+0-1-6+0...+17 -rel- 31.8.03
+    new:
+	-!	subtract from memory content
+	drop2	drop 3rd on dstack { 2 roll drop }, { rot drop }
+    modified:
+	e\stg	code 13, carriage return, by "\r"; 'line feed' by "\v", code 11
+	max-xy	user-deferred, ref by uvari {(maxy)}.
+	(maxy)	{max-xy} xec vector, uvari
+	[maxxy]	default procedure for {max-xy}
+	expect	suppress <cr> after input if prompt vector inactive { (ok) @ 0= }
+	-wl	out-commenting mode removed, always returns a flag
+	inidata.S
+		some intermediate asm data definitions removed
+    fixed:
+	0dup	if @tos =/= 0
+    other:
+	f4p.scr	printer control, simultaneous output to /dev/par0 & file tested
+
+
+0-1-5+7...+104
+    new:
+	-0=	test for -0 = $80000000, {0=} returns true with both, '-0' and 0.
+	+adr	address of a cell the value of which is its own address;
+		{ +adr dup @ @ ... @ = } returns 'true'.
+	app	write-append mode flag for {open}
+	array	<f4x> generic arrays defining word, on top of {heapmem}
+	bit	flg whether addressed bit (in memory) is set
+	@csp	restore PS from uvari {csp}
+	fposab	file-pointer wrt file beginning
+	fpose	file pointer wrt end of file
+	flt,int <f4f> set to/revert from persistent ranum input mode
+	h]	<f4x> headerless words
+	heapmem	<f4x> safe memory allocation defining word
+	[is]	{is} extension vector
+	>link, link>
+		<f4x> linked list items' insertion & removal
+	+nul	address of a cell the value of which is zero; an empty string;
+		{ +nul dup +@ +@ ... +@ = } returns 'true'.
+	pid@	own process id
+	:slist	<f4x> alternate strings list definition, 
+		compiles strings separately, otherwise as {slist:}.
+	+to	add into cons, vari, uvari memory
+	[+to]	{+to} extension vector
+	up!	set uvari ref address from dstack
+	work, aux
+		reloc. channel numbers
+    modified:
+	(ti)	timing variable for {w4f} extended to double size µs.
+	(quit)	at different address, beyond byte addressable range of uvari!
+	0=, 0dup
+		test for zero includes '-0', re {-0=}.
+	[qm]	<f4f> "%" percent postfix for {quad} and {df} ('ranum') input 
+	alchp, rechp, mmalchp, mmrechp
+		<f4x> ok, tested w. alchp/rechp
+		memory allocation words separated from <f4x> to <mem.scr> 
+	hold	inserts the leading, non-zero bytes (l.s.b. 1st) of a sing
+	lfile"	<f4x> def'd words, on execution, def filename string for {help};
+		{empty-buffers} before ret to exitting.
+	rnsiz	<f4f>, bytes size of a ranum, was {fsize}.
+    fixed:
+	e\stg	as some correction to <lf> which in the linux console is falsely 
+		implemented, "\r" will be converted to code 11 which by the linux 
+		console hnd is interpretted as line-feed, w.o. carriage return.
+	forget	forget-handler data space in vmem
+	hash11	sum w.o. count byte, &c(!)
+	(num)%	<f4f> if dpl@ < 0
+	(quit)	addressing mode
+	r+	return-stack
+	slist,	<f4x> escape seq-s adjustment
+	xy, max-xy
+		test for console/terminal stdout before running into sys_select
+    other:
+	mem.scr	memory allocation words: {heapmem}, {array} and, required support
+	bh.scr	alte F6 kontokorrent-buchhaltung, erneuerung für F4 begonnen.
+	kt.scr		dto, kontenplan
+	bhm.scr		dto, bh hinweistexte
+	prt.scr		dto, druckersteuerung (printer control)
+    unresolved - and not considered urgent for correction:
+		{chain}, interpreter runs into segfault
+		cannot add any more kernel-vocs, else segv; ok w. hi-level defn.
+
+
+0-1-5+1..4 -rel- 30.7.03 
+    new:
+    modified:
+	<vtqp>	reads by single chars, after sys_select per char
+	eR, e^R	<f4e.scr> interrupt replacing "a"ll
+    fixed:
+	xy, vt?	slow vt response
+    other:
+	-afind	included in standard f4 binary (asm vari _af_ =/= 0)
+	fig4th.h configurable asm vari separated to file <f4-asm-cfg.h>
+
+
+0-1-4+23...72 (+38..61 for 'cvs' faults and 'tar' which is 'documented'...)
+    new:
+    modified:
+	f4e.scr	screenfile editor
+    fixed:
+	>move<	copying
+	edlin	initial display cursor posn
+    other:
+	f8ed	removed, since f4ed in working state, cpl'd by "lload f4ed"
+	f4e.scr	screen-file editor F4 adaptation ready
+    unresolved:
+	xy	response not always fully fetched, partly read into display
+
+
+0-1-4+... (+05..+10 due to 'cvs' handling faults)
+    new:
+	>move<	copy string of bytes in reversed order
+	f~~	<f4f>, zum spaß mal, nach der verblasenen 'beschreibung' 
+		in dpans94 12.6.2.1640 - die begreifen mag, wer kann...
+	within	nicht weniger verquaster text, dpans94 6.2.2440.
+	off	sto zero to memory cell (daemlich, doch manchmal ganz praktisch)
+    modified:
+    fixed:
+	head, create
+		won't overwrite name at here + some disp before final set up.
+		{head} does not check whether the rsp. name was already used.
+	exit	not 'optimizing' a preceding cfa after {compile}
+	found?	flag value
+	case:	<f4x> lists compiling within a word fixed w. exit wrt compile
+	lload	dstack if word not found
+	help	<f4x.scr>, shows filename of defining screen (if not f4x.scr)
+
+
+0-1-3
+    new:
+	[;]	was {;}
+	ch-opn	tf if (any type of) a channel is accessible
+	fround5	<f4f>, rounding methods testing
+	hash11	ELF standard text hashing procedure
+	head	{create} but name by supplied string
+	xlload	forcedly lload from <f4x.scr>
+	uq/
+    f4f.scr:
+	f.r	right justified display ranum w. fixed no. of fractional digits
+	ln(f)	new, ok
+	e^f	new, ok in range [-43,6;46,6]
+    conditional:
+    _dx_ and _hx_
+	udmod, ud/
+    modified:
+	;	deferred, default {[;]}
+=>	help	<f4x.scr> extended for other source screenfile path+names
+	hlp!	<f4x.scr> store source file name, &c - re file f4x.scr
+	q/	etc, shorter code
+    fixed:
+	<cvtseq> in file <forthio.S> chars count correction for {out}
+	;	address range check for optimizing modifications; -ve @cmc.
+	2pick	-ve index
+	df	ranum reading mode terminated at ";" if no number received
+	f0~	if exactly equal zero, <f4f.scr>
+	smudge,unsmudge,immediate
+		access to w/o mem after forget or initially, after program start;
+		prevents access to outside program or, into mprotect-ed memory.
+
+
+0-1-2	..+22
+    new:
+	d*/mod	signed w. quad intermediate product
+	m*/mod	signed w. treble intermediate product
+	ud*/mod	unsigned w. quad intermediate product
+    modified:
+	'e'	numeric multiplier postfix evaluation removed because of by a 
+		double non-representable figures and, conflict w. ranum defn.
+	[qnum]	evaluates +ve exponential multipliers wrt current @base and 
+		by flag characters at decimal radix directly, by multiplication, 
+		adds -ve exponents to dpl for further processing, e.g. in the 
+		'ranum' extension words, {df}, &c
+    fixed:
+	h>a	range, OR-ed "0
+	qm/mod	signed remainder (-ve)
+	#f	fractional part; <f4f.scr>
+	f<	stack, <f4f.scr> (also affecting min, max, f>)
+	v.j	spacing; <f4f.scr>
+	df2/ df2*  <f4f.scr>
+
+
+0-1-1 - rel 12.7.03 -
+    new:
+	du>
+	[id]	{id+} redirection for new defns debugging
+    modified:
+	exit	cpl branch into last colon defn if no other modification done
+    fixed:
+	#see
+	d/mod	-ve quotient
+	flit	f4f.scr, rstack 
+	q-	ret to <next>
+
+
+0-1-1+30
+    new:
+	qsqrt	(also for dsqrt)
+	l>pfa	convert lfa to corresponding pfa
+	l	list @scr
+	m>r, r>m
+		bytes to/from rstack from/to memory
+	n>r, nr>
+		cells to/from rstack from/to dstack
+	qm+	signed add sing to quad
+	umq^	quad, sing raised to the power of a sing; unsigned
+	v2>pfa	2nd-ary voc's pfa by primary voc's pfa
+    conditional:
+    _ds_
+	d2*, d2/, a2>>
+    _dx_
+	qm/mod, pick2, pick3, pick4 (i.e. { 2 pick } etc), d1+, d1-
+    _dx_ and _hx_
+	nos-dminus, nos-qminus, nos-q1+, nos-4not
+    _mx_
+	4roll, 4pick, 4over, ?q0=, qsgn, ?uqcmp, qslb, 4>>, 4<<, q2/
+	uqsm*, uqsm/, q#, qf/mod, q/mod, q/, qmod, uq*, q*, q+-, q-, q1+
+    _mx_ and _hx_
+	8dup, 8not, o+, o1+, ominus, nos-qminus, nos-4not, nos-q1+
+    _rx_
+    	_rx_ implies _dx_, _ld_, _lx_, _mx, _sqrf_, _slb_
+    modified:
+	spush(x) and SPUSH => SPUSH(x) and spush, for consistency.
+	asm source split into multiple files, fewer macroes.
+	for d* & ud*: md*, umd*, qminus depend on _dx_ (was _mx_) asm vari.
+    fixed:
+	uqm/mod	ret after div0 or quad in range of a double
+	m>s	in range of 9..11 bytes
+    other:
+	f4f.scr	different {float} implementation by double cells' pairs.
+
+
+0-1-0+39 - rel 30.6.03 -
+    <f/f4x.scr>
+    <i/fig4th.inc>
+    <s/fig4th.S>
+    new:
+	a>b	was {a-base}
+	dsgn	sing signum of a double
+	nswap	swap groups of cells
+	m>s, s>m
+	    basic words to fetch/store from/to memory, little endian bytes order,
+	    i.e. both, tos and top memory address carry the m.s. 8bit-byte:
+	m>s	fetch bytes from memory to dstack; dstack aligned to multiples 
+		of 4 (cells size), zero-filled towards m.s. bytes (dstack cells)
+	s>m	store bytes from dstack to memory; n bytes from tos+n till tos, 
+		m.s.b at tos, discards cell-aligned items from dstack.
+	recurse	cpl call to currently being defined word
+    by asm-vari in i/fig4th.h conditionally compiled extensions:
+    _rx_ (provisional for 'ranum' real numbers extn by im/proper fractions):
+    		_rx_ implies _dx_, _ld_, _lx_, _mx, _sqrf_, _slb_
+    _lx_ (fast access to locals):
+	l@, l!	indexed fetch/store from 'local' data space
+	l@0,l!0	fast fetch/store from/to local dat space, at zero index; can be 
+		used as compiling pattern for other indexed locals access words
+    _ld_ (local doubles, re above):
+	l2@, l2!, l2@0, l2!0
+    _ali_:
+    	1abs	convert @tos to one-s complement if -ve
+	2^	double int power of two, max. exp. 63
+	-0	"negative zero", which I'd decide to name the invalid 2-s
+		complement "signed integers" bit pattern of only the sign 
+		bit set - about which I won't be disputing, any more...
+	align	align a number to multiple of a given power of 2
+	pow2	flg whether a sing is a power of 2
+	u+	unsigned extend and add sing to double
+	u^	unsigned double pover to a sing of a sing
+    _dx_ (doubles):
+	2pick, 2roll, 2rot, 2-rot
+    	4drop, 4dup
+	d<, du<, d=, d0=
+	dgcd	double int greatest common divisor of two doubles
+	d/mod	signed div of doubles w. remainder
+	dmod, d/
+	qfm/mod	floored div quad by double, leave doubles
+	fd/mod	floored div of doubles w. remainder
+    _mx_ (multiple cells):
+	4not
+	md*, umd*
+	n@, n!
+	q+, q1+, qabs, qminus
+    modified:
+	a-base	other name {a>b}
+	e\stg	replacement chars may be more than one byte, test w. <csi> = \e[
+	zcount	faster (half xec time)
+    fixed:
+	ud. ub.	missing trailing blank
+	r+	cell after next level caller cfa
+	#see	early termination
+	exit	cmc count to optimizing else..endif/exit/recurse
+    other:
+	f4f.scr	{float} vocabulary, implementing real numbers by signed 
+		double integer and unsigned pair of sings fractional part.
+	f4x.scr	{l!n}, {l@n} indexed locals fast access defining words
+		{>move<} non-destructively copy bytes in reversed order.
+
+
+0-1-0+00 - rel 14.6.03 - 
+		1st fully functional
+
+
+#################################################################################
+# F4, hp'2003, cont'd from changelog-0.0.0+00-0.1.0+00 <eof>
