@@ -1,0 +1,4 @@
+#! /bin/sh
+# korrektur der vermurksten original-"dokumente"
+i=${1};o=${2};[ -z "${o}" ]&&o=${i}.txt
+f8 x-io 'begin ?key while dup 127 and dup bl < over 10 =/= and if drop else emit endif 26 = until bye' <${i} >${o}

@@ -1,0 +1,17 @@
+Begin4
+Title:		F4
+Version:	0.0.12
+Entered-date:	2003-11-01
+Description:	fig-forth(1.0) style small experimental forth kernel 
+		assembly w. AS (att syntax) binutils 2.12+, bash 2.05b.
+Keywords:	forth,x86-pc-linux,assembly,compiler,interpreter
+Author:		hp@lxhp.in-berlin.de (h-peter recktenwald)
+Maintained-by:	hp@lxhp.in-berlin.de (h-peter recktenwald)
+Primary-site:	ftp://metalabs.unc.edu	/pub/Linux/libs
+Alternate-site:	http://www.lxhp.in-berlin.de	f4a.src.tar.bz2
+Original-site:	http://www.lxhp.in-berlin.de	f4a.src.tar.bz2
+Platforms:	i586-PC-Linux 2.4 (w. binutils 2.12+)
+		http://www.lxhp.in-berlin.de	/lhpf4.html
+Copying-policy:	non-commercial Q-license (QT) applies to F4 and files of 
+		it's author, others as mentioned in the rsp. file/program
+End

@@ -1,0 +1,549 @@
+#################################################################################
+f4a - fig-Forth-1.0 style Forth for i386-pc-Linux/ELF
+	F4,F4A Copyright (C) 2003 by h-peter recktenwald <f4@lxhp.in-berlin.de>
+	source per <http://www.lxhp.in-berlin.de/lhpf4.html>
+	author h-peter recktenwald <f4@lxhp.in-berlin.de>
+	started Mit Jul 24 23:45:30 GMT 2002
+#################################################################################
+->									80 cols |
+#################################################################################
+
+MAJOR CHANGE w. 0-0-17
+	after considerable effort, I got rid of the GASP & MAKE 'utilites' which
+	results to less faults, (much) faster compiling and, easier programming. 
+	cpl by bash script <make-f4s>, which also defines the configureable items
+
+re file QT-license.txt (en), QT-lizenz.txt in ./d directory
+	for Copyright and useage licensing information.
+
+re file INSTALL, for some note on required pre-requisites, how to generating the 
+	binary, where and how to install the program and related docs, libraries
+
+#################################################################################
+
+notes on
+
+	linux command line
+	high-level extensions from library screen-file
+	other execution modes
+	command-line arguments
+	runtime help
+	debugging
+	memory (de-)allocation, allot
+	{constant}, {variable}, {deferred} &c 
+	conditional compiling
+	block-files (screen-files)
+	channels
+	search order
+	linux system calls
+	linux signals
+	other utilities
+	cave(te)
+
+files
+	subdirectories contents
+	
+---------------------------------------------------------------------------------
+	forth words names within "{" ... "}" braces which should not be entered.
+	'vari' short for 'variable', 'uvari' for 'user variable'.
+---------------------------------------------------------------------------------
+
+from linux command line, execute
+
+		f4a
+	or,
+	 	f4g
+
+	expect the prompt which is '#' in edit-inserting mode, else '=' or, 
+	while compiling '"' and '<', rsp; w. toggled editting mode the prompt 
+	display changes after next <enter>.
+
+	forth words, by default, will be found letter case independently. the 
+	<tab> code is valid as a word delimiter, like the blank space, for the 
+	compiler/interpreter and, with { bl enclose } - in fact, any lower 
+	ascii range control code, [1,31], will be taken for a words' delimiter 
+	if {bl} was passed to {enclose}. 
+	ascii <nul> is the unconditional delimiter and, the fig-forth procedure 
+	which fetches the next line from input stream, to continue interpreting.
+
+	execution won't require any provisional memory settings, re "memory 
+	(de-)allocation, allot", below. the system starts w. one memory 'page' 
+	(4K) for each of the F4 distinct memory ranges of terminal input buffer, 
+	user variables, data-space, dictionary and, the data- and return-stacks. 
+	memory extends as required, at runtime or while compiling; dictionary 
+	and variable's data memory sizes will also be reduced according to the 
+	actual requirement, with an appropriate 'hysteresis' (+4K).
+
+
+high-level extensions from library screen-file <f4x.scr>
+
+	for instance, enter
+		lload f4
+	to compiling (almost) the entire extensions screen-file, <f4x.scr>, from 
+	the libraries' installation directory.
+
+		words
+		order
+		vocs
+	will then show all words which currently exist, the actual search order 
+	for {-find} &c and, all available vocabularies.
+	
+	the Linux error decoding words won't be loaded, en bloc, with {lload f4}:
+	
+	    lload .er
+	adds the Linux error names and message texts. after those words were 
+	compiled, any (-ve) error number can be decoded w. {"er} or {.er}, etc.
+	the rsp. error names' words which return the address of a corresponding 
+	message text will be compiled into the {linux} vocabulary, automatically 
+	on 1st invocation of {.er}, {"er} or, {#er}, from Linux source, file 
+	"errno.h". the rsp string variable, {#def}, may be re-defined to likewise 
+	structured, different files, to compiling any #define-d Linux constants.
+	those error number words provide an example to adding forth definitions 
+	in a programmable manner, with {evaluate}.
+
+	if compiled with {lload .er} the linux messages will be linked into the 
+	{message} forth word for display w. -ve error numbers.
+	
+
+other execution modes
+
+	redirected i/o
+	    cat textfile | fig4th | other-program 
+	    echo  " forth words " | fig4th > outfile
+	    n=$(fig4th $456 789 * &123 /mod . . cr bye)
+	or any combination of the above.
+
+	script-file:
+	    #! (abs. path to fig4th) (initially executing words)
+	    ... program ...
+
+	the blank after "#!" required by F4, {#!} is a special comment word.
+	{bye} not required, an exit-code may be passed, explicitely, w. {bbi}.
+
+	while in scripting mode the script-file is in the {dr1} channel and, the 
+	{blk} uvari contains the 1-s complement of the currently executed line's 
+	file position. stdin by redirected channel 0, stdout by 1, stderr by 2.
+	
+	interleaved script execution, e.g. piped input from an F4 program to 
+	another one which continues after F4 was terminated and, will also be 
+	using a locally re-defined console state for it's own display purposes 
+	might require disabling the F4 console state resetting procedure, which 
+	can be done by invalidating the rsp. file desriptor, storeing the value
+	of -1 to the uvari {(vtr)}.
+
+
+command-line arguments
+
+	F4 won't need any 'command line switches' but a resp. program will be 
+	using plain executeable forth words, instead, which are copied to the 
+	terminal input buffer for initial evaluation.
+	inactive text, file names etc, can be separated with the {--} delimiter 
+	after any active arguments.
+	this structure can be nested once, for F4 script-files, by fixed, active 
+	default arguments immediately after '#!' and the path to F4 executeable:
+
+	re {(argp)} which stores the ptr to the arguments list, arguments count 
+	uvari at {(argp) 4-} which stores the no. of remaining, in-active args.
+	
+		./script forth-words-to-execute -- in-active arguments list
+	
+	and, 1st line in the script
+	
+		#! /path-to-F4-executeable initial-forth-to-execute
+		( the forth script text follows )
+
+	the arguments count is passed such that it can be used for the do-loop 
+	parameters:
+		(argp) (up) - 4- ucons argc
+		(argp) (up) -    ucons argp
+		: a argc -dup if 0 do i 4* argp + @ zcount i . type cr loop endif ;
+	it is zero if no arguments present, and begins w. 1 for in-active args, 
+	the 1st arg is at zero displacement wrt @(argp).
+	
+	arguments which follow the F4 file-name in the top script-file line will 
+	be executed before any other arguments which were passed to the script 
+	until the (optional) active arguments delimiter, {--}, a {noop} word. 
+
+	{--} will be evaluated as the active args delimiter only if passed as a 
+	single argument, on its own. thus preventing erroneous action if, for 
+	instance, passed within a string into the forth program. if the script 
+	header line is supposed to pass any inactive arguments the {--} delimiter
+	can only be put to the beginning of the rsp. arguments list, for internal 
+	simplicity, because that list is passed to the executeable program as a 
+	single argument string, in it's entirety. the case of default arguments 
+	which are to be executed at program startup was considered more common.
+	
+	the (outer) arguments list is not limited other than by from the host OS 
+	available memory - allocation failure would then terminate the program 
+	(tested w. up to 128K bytes which was the maximum due to 'bash' limits). 
+
+
+runtime help
+
+	if F4 was installed to the directories as defined in 'make-f4a', i.e.
+	by 'make-f4a install', the {help} word can be compiled from the main F4 
+	hi-level source library file w. { lload help }. {help}, executed with a 
+	following forth name which is implemented in the kernel or, in the main 
+	hi-level extensions library-file "f4x.scr", displays the rsp glossary 
+	entry or the screen where the word was defined. e.g:
+		lload help		\ load the help word
+		help lload		\ display short useage hint
+
+	empty output if the rsp. name is not a forth word for which an entry 
+	exists. the file "glossary" may be extended w. supplemental comments 
+	which, immediately after will be found by {help}. for instance,
+		help sys		\ the syscalls compiling & executing word
+		help chans		\ open i/o channels main data display
+	
+	the kernel word {v} followed by any forth word displays that word's name, 
+	in reversed video if 'immediate', it's cfa and, the vocabulary which it 
+	belongs to, regardless of the current search order. "-?-" if the word 
+	wasn't found in any of the voc-linked vocabularies.
+	
+	the words {!hlp}, {hlp!} &c from 'f4x.scr', provide some means to link 
+	any further screen-file into the chained list of files from which the 
+	help/glossary texts are searched for and read by {help}. references can 
+	be interleaved by multiple insertion of {!hlp}, where appropriate - for 
+	instance, after nested calls to {load}, {lload} &c, from within other 
+	screen-files.
+
+
+debugging
+
+		o
+	toggles the prompt w. stack report line.
+
+		4 tdb
+	enables the F4 debugger in single-step mode. other modes re {help tdb}.
+	
+		debug ?er
+	the word {debug} which can be compiled from the extensions file fetches 
+	the next name as the high-level forth word to debug, setting the lower 
+	and upper address bounds for {tdb} and enters {4 tdb} debugging mode. 
+	execution of the rsp. word will then single-step with a display of the 
+	data stack, cpu-flags and the rsp. next word which the defn encounters.
+
+	{tdb} debugging modes work by runtime redirection of return to <next> 
+	and, won't depend on any different data or code wrt. normal execution. 
+	single one different item is the cpu-register <ebx> by which execution
+	jumps into the rsp. <next> procedure. thus, whether debugging or not 
+	won't interfere w. the actual F4 system state, at all. for instance, 
+	debugging may even be active while compiling a definig word...
+
+	alternatively, manually setting	debugging bottom bound stored in uvari 
+	{ (gb) }, top in { (gb) 4+ }. debugging bounds for the 'latest' word: 
+	{ latest pfa here (gb) 2! } and { 4 tdb latest pfa cfa execute 0 tdb }.
+	
+	no special provision for low-level debugging but, compiling F4 e.g. with 
+	(DEBUG=all make new) which includes all labels in the binary for display 
+	while single-stepping with a low-level debugger - I'd recommend "ALD".
+
+
+memory (de-)allocation, allot
+
+	most certainly won't ever run into a 'dictionary overflow' because, it 
+	extends the available dictionary space into host sytem memory if less 
+	than a pre-defined minimum (by default set to 1K) would remain after 
+	{allot}-ing the requested no. of (8bit-)bytes.
+
+	the same implicitely applies to the return-stack which is in the openly 
+	extending .ss section, by the underlying Linux/ELF execution model.
+
+	data-stack extends if less than a pre-defined minimum would remain after 
+	any 4th stack control query, inplicitely on return to {quit}, the input 
+	prompt and, e.g. by {?stack} or, {-sp}, {+sp} which can be used to check 
+	or forcedly pre-allocate additional stack memory.
+
+	rsp hi-level words "lload"able from <f4x.scr>, {+mem}, {+tib} etc.
+
+	unlimited size, cleared on allocation, 'local' memory can be allocated 
+	or released with {|loc}. further, hi-level support words in <f4x.scr>.
+
+	the environmental variables can be read but, won't be modified by any 
+	kernel or extension word and, no means is supplied, either, to modifying
+	the strings, for security reasons. rsp memory range is write protected.
+
+
+{constant}, {variable}, {deferred} &c 
+
+	those words do NOT store to the rsp. pfa, because after re-loading the 
+	rsp. program as an ELF binary, the compiled words would be non-writable 
+	in program memory but, store a displacement figure wrt. the variable 
+	data memory block which on F4 start will be mmap-ed from host memory. 
+	thus, for instance, use
+	   ' constant-word @ (vb) @ + 
+	which returns the data storage address of a constant, etc.
+	re { help is } for a safe means to modifying any variable data which 
+	were compiled with a rsp. F4 word.
+	
+	{is} and the synonymous word {to} can be used to store to words defined
+	with either one of
+	    constant, ucons, 2constant
+	    variable, user, 2variable
+	    defer, udefer
+	and, unless the rsp. program was executed as an ELF binary, {is} can 
+	also alter a {cons+} value, which also applies to {defer} and {udefer}
+	default (fall-back, e.g. after lost deferrence) execution vectors.
+	
+	{>body}, {>v}, {vallot} etc. for definig words with {<builds}, {does>}
+	and for direct access to the vmem area - re glossary & 'help'.
+
+
+conditional compiling
+
+	supported with the 'immediate' words, regardless of interpreting or, 
+	compiling state:
+
+	{found?}
+	    which returns the true flag if the following word was found, 
+	{if-true}
+	    which evaluates the following input only if a non-zero value was 
+	    passed on stack, util eol of either, a screen file by eol = a 
+	    multiple of 64 of the rsp. file pointer or, the line of a script, 
+	    terminated by the <nl> code (ascii 10).
+	{if-found} and {if-nfound}
+	    which act as a combination of {found?} and {if-true} or {0= if-true}
+	{+continue}
+	    discards the passed number of following lines of a screen-file, only
+	    and, can be used un-conditionally or, after any of the above words 
+	    which evaluate a condition.
+
+
+block-files (screen-files)
+
+	the preferred access method to compiling from source files is by screen-
+	or 'block-files' and the rsp. supporting words. compiling works, e.g. w.
+	    { " filename" using  6 load }
+	re {load}, {l-load}, {l-find}, {list}, {block} etc.
+			
+	open by {using} defaults to 'r/o' mode, e.g. for the {help} function 
+	which should be enabled to reading from r/o installation in F4 lib-dir.
+	access mode of {using} can be modified w. uvari {(uo)} which stores the 
+	applied open code.
+
+	the F4 distribution supplies the <lib4th> block-file editor, in the 
+	utilities directory (L4 source http://www.lxhp.in-berlin.de/lhpf8.html):
+	    4ed		screen-file editor (lib4th static)
+	    f8edh.scr	help-screen for f4ed
+			start with < 4ed -- f8edh.scr >
+			or any other, fully qualified file name
+			and press <cursor down> key - or cursor 
+			right until eol - to using the offered 
+			default/cmd-line arg file name.
+
+	{ lload f4e } loads the rsp. F4 version which apparently works but, is 
+	not yet sufficently tested.
+
+
+channels
+
+	file access by 'channels': 
+	    { filename open-mode channel-no. -- channel-no | error-code }
+	'channel number' is an index into the rsp channel definition table which 
+	stores the most often used data of the rsp. file, for direct access or by 
+	mapped memory.
+	'mmap'ed r/w access according to the rsp. file, by default no permission 
+	to executeing will be set. access to mmap-ed channels with the below 
+	mentioned file access words, transparently - but, mmap-ed files	cannot be
+	extended beyond the actual file size of when mmap-ing was done. a writing
+	operation which would extend beyond e.o.f. will be directed to the actual
+	file, if accessible, i.e. file not {close}d after {mmapf} execution.
+
+	F4 provides two i/o channel references, the system channel table, "cdt", 
+	and the redirectable i/o channels list - re {chp} - which stores a byte 
+	index into the system list for stdin(0), stdout(1), stderr(2). re {chan}.
+	fig-Forth standard i/o words receive the rsp. i/o reference by the latter 
+	list of indices while, any other refer to the system channels table by 
+	the rsp. index ('channel number') into the list of {cdt}-s, i.e. {open}, 
+	{fread}, {fwrite}, {fposre}, {flen}, {mmapf}, {unmapf}, {msync}, &c.
+
+	re {chmax} no. of available system channels, {chan} redirected chan., 
+	{bchan} redir. block-file i/o, {chp} base addr of redir table, bytes.
+	
+	pse, note that besides executing access enabled or not, any memory block 
+	mmap-ed readable would also be executeable, due to x86 cpu facilities.
+
+
+search order
+
+	{-find} and related words search in sequence of
+		the {local} vocabulary and it's chain of secondary vocs
+		the chained vocabularies the top of which is stored in {context}
+		the chained vocabularies the top of which is stored in {current}
+		the {root} vocabulary and it's chain of secondary vocs
+
+	'chained vocabularies' implemented by assignignation of a 2nd-ary, other 
+	vocabulary to the primary one, where words' searching would continue 
+	until the rsp. word was found or, until the chain ends or, would run into
+	recursion. the figure of zero can be assigned to explicitely end the rsp. 
+	chain. the procedure is safe wrt. recursion and, won't multiply scan a 
+	vocabulary which appeares more than once.
+	neither, the number of defined vocabularies nor the size of the 2nd-ary 
+	vocabularies chained search order, is limited other than by host memory.
+
+	by default, {local} does not introduce a vocabulary chain.
+	{root}-secondary defaults to {forth} but, could be linked to any other 
+	vocabulary, for some 'emergency' search order - or might be zeroed, too.
+
+	{forget} words go through any search order, scanning all {voc-link}-ed 
+	vocabularies. contents of {current} and {context} forced to {forth} if 
+	the rsp. vocabularies were removed while executing {forget} etc.
+	
+
+linux system calls
+
+	execute { -1 (s) drop } for display of by names available system calls.
+
+	{ sys syscall-name } executes or compiles, dependent on the actual state,
+	the rsp. syscall which expects it's arguments by reference to the top 
+	item (address of highest cell) in a data field which stores the args in 
+	consecutive cells, #last# item as listed in the corresponding man(2) page
+	desctiption at 1st (lowest) address. in terms of the F4 data-stack, which 
+	pushes towards higher addresses:
+		( last arg   ..   1st arg ( of man-pages description )
+		( ebp edi esi edx ecx ebx -- ebp edi esi edx ecx ebx )
+	where the position of <ebx> should be passed, e.g. w. {sp@}, to the forth 
+	word {sys}. {sys} returns w.o. modifying the arguments but, additionally 
+	returns to @tos the error code or the return value from the syscall.
+	i.e. arguments to {sys} by address of <pointer> in memory:
+			ebp	at lowest address
+			edi
+			esi
+			edx
+			ecx
+	pointer:	ebx	at top address
+
+		{ sp@ sys getpid swap drop }
+	some other, simple examples can be displayed w. { help sys }.
+
+	there are no different {sys} words wrt the number of required arguments 
+	because, none would be modified by a system call, itself, and none would 
+	actually be used which is not required. so redundant arguments need not 
+	to be cared for. the F4 datastack defaults to sufficient minimal space to 
+	not running into segfault due to reading from unassigned memory, either.
+
+
+linux signals
+
+	sigint (2)
+	by CTRL"C" key, ascii 3, exits the program w. zero error code.
+
+	sigquit (3)
+	by CTRL"\" key, ascii 28, forces the {warm} re-initation and, with no 
+	loss of data (forth words) recovers even from the most tightly executed, 
+	endless loops, regardless of executing by cpu or high-level forth code.
+
+	sigfpe (8) numeric overflow
+	from division by zero or other, rather odd 'exceptions' as, for instance, 
+	signed division by 1 of a negative double, will be catched by the signal 
+	handler and return the according to the divisor rsp. maximal integer or, 
+	1 after 0/0.
+
+	sigsegv (11) memory access fault
+	mostly, F4 will be recovering from a 'segfault' which migh have occurred 
+	due to false addressing; for instance, an attempt to storeing to 
+	write-protected memory, or, to the kernel code, or to an address the 
+	memory at which was not allocated or, if pushing an un-suitable figure 
+	to returnstack which {;} or {quit} would take as the <next> location, &c.
+	most of those faults will be recovered from by return to keyboard prompt, 
+	without loss of data. other, more severe ones, run into the partial
+	re-initiation procedure of {warm} or, {cold} if {warm} wouldn't suffice. 
+	last resort by exitting w. {bye}, after the 3rd consecutive segfault.
+
+	sigwinch (28)
+	the main window's outline by characters rows and columns count will be 
+	stored to the rsp. system variable immediately after resizeing, in an 
+	X-windows emulated terminal - which does not apply to the linux console.
+	{xy} returns the updated, currently valid figures.
+
+
+other utilities
+
+	install the utility program to viewing any screen-file w. Linux 'less',
+	from ./u subdirectory, 'f4view'.
+
+
+cave
+	Return-stack operations should not be used for an implicite {swap}, i.e. 
+	{ 2>r  ... r> ... r> }, because this would rely on a feature which isn't
+	common to all Forth's and, only implicitely defined in 'the' standard(s).
+
+
+#################################################################################
+
+sub-directories:
+
+./a	administrative utilities
+
+./b	binaries
+    fig4th
+    	the executeable program which will be installed as "f4g" if compiled w. 
+	debugging data (binary+150K) or, as the stripped variant, "f4a".
+	
+./f	forth program library
+    f4x.scr
+	hi-level extensions, "load"able after file opened w. "using", { 6 load }
+	or, almost all words { lload f4 }, save an F4 ELF program { lload elf! }.
+    f4a.scr
+	hi-level substitutes to kernel words which are conditionally assembled.
+    f4c.scr
+	hi-level example definitions of F4 specific, by fig-Forth standard words.
+    figed.scr
+	the fig-forth line editor which also loads <f4x.scr>, by { editor edit }
+    f4e.scr
+	full screen editor, w. two windows + workspace, on top of <figed.scr>.
+	'lib4th' template, not yet fully adapted to F4 - re below, "4ed".
+    f4f.scr
+	real (f.p.) numbers by ordered pairs of doubles.
+    f4m.scr
+	system memory access, generic array definition.
+    f4o.scr
+	collection of formulae for applied, non-digital radio comminications 
+	and small signal electronics techniques.
+    f4p.scr
+	printer control, simultaneous console & printer output.
+    f4z.scr
+	complex numbers extension to <f4f.scr>.
+
+
+./d	documentation
+    cedit,mx-syntax
+	'nasm' & 'as' assembly syntax highlighting for the "mc" editor, "cedit".
+    cvslog-lN-f4g.txt
+	latest changes reference, <make cl> for CVS log notices
+    f4a.menu
+	description file for the debian X-windows menu system
+    fig.., forth_...
+	fig-forth installation examples
+    glossary
+	F4 kernel doc
+    magic
+	data for the 'file' command to recongnizeing an F4 binary executeable
+    syscalls-in-F4
+
+./i	include-files for F4 assembly
+./l	generated assembly listing
+./o	old stuff
+./s	main F4 asm source <fig4th.S>
+./t	some more less than more, meaningful tests...
+./u	user utilities
+    /f4view
+	f4view.4th	displays screen-files w. Linux 'less':
+    (LESS_ADVANCED_PREPROCESSOR=yes LESSOPEN="lessopen.sh %s" less ./f/f4x.scr)
+    f4view.4th for the same purpose, which can be used after F4 was compiled and 
+    installed as <f4g> and a rsp. line added to <lesspipe> or, <lessopen.sh>.
+    both, f4view and f4view.4th, can also be used to converting a screen-file 
+    to a by lines ordered file:
+	f4wiev.4th -- path/screenfile > converted-file
+	f4wiev        path/screenfile > converted-file
+
+    /f8ed
+	4ed		screen-file editor (lib4th static)
+	edit.f8		hi-level editor source
+	f8edh.scr	help-screen for f4ed
+			copy <edit.f8> and <f8edh.scr> to 
+			$(HOME)/.f8ed/ or /usr/local/lib/f8/
+
+
+#################################################################################
+# F4 INTRO <eof>

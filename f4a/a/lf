@@ -1,0 +1,12 @@
+#! /bin/sh
+# for f4 8/2002 by h-peter recktenwald <l4@lxhp.in-berlin.de>
+# display a job's open files, dft is <fig4th> and calling user
+
+[ -n "${1}" ]&&{ c=" -c ${1}";shift; }||c=" -c fig4th"
+[ -n "${1}" ]&&u=${1}||u=$(id -nu)
+
+l=$(type -p lsof)
+[ -n "${l}" ]||l=/usr/sbin/lsof
+
+${l} -a -b -u ${u} ${c} 2>/dev/null
+echo U:${u} C:${c}

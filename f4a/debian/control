@@ -1,0 +1,10 @@
+Source: f4a
+Section: Apps/Programming
+Priority: optional
+Maintainer: hp <f4@lxhp.in-berlin.de>
+Standards-Version: 3.2.1
+
+Package: f4a
+Provides: f4
+Architecture: i386
+Description: fig-type Forth interpreter/compiler

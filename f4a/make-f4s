@@ -1,0 +1,781 @@
+#! /bin/bash
+# F4,F4A Copyright (C) 2003 by h-peter recktenwald <f4@lxhp.in-berlin.de>
+# makefile substitute for <f4s>; http://www.lxhp.in-berlin.de/lhpf4.html (de)
+# ------------------------------------------------------------------------------
+# 	f4a supplies the F4 fig-type Forth (wir hoffen es mal...)
+# ------------------------------------------------------------------------------
+
+#	vier varianten, s.u., 'program name' und  'AS control'
+# DEBUG
+#	pass env-vari DEBUG with make-f4 for different debugging modes and 
+# 	the rsp. (re below) binaries to be installed w. different names.
+
+#	unterdrueckt asm-listenausgabe in allen varianten, spart ca 1/3 zeit:
+# NOLIST
+#	env-vari NOLIST non-empty to always suppressing the asm listing output
+#	which, saves about a third(+) of compile time.
+
+# GFILES und CFG
+#	halten system- rsp -zustands-abhaengige daten, sie werden selbstaetig 
+#	erzeugt, falls sie nicht existieren. nach aenderungen im system (z.b.
+#	neuer kern) sollten diese zwecks erneuerung beim compilieren zuvor 
+#	entfernt oder explicite mit <make-f4s cfg> erzeugt werden.
+
+# cvs
+#	'./a/commit "(text)"; dies und direkt die cvs-kommandos ausfuehrender 
+#	'user' musz in derselben gruppe sein wie die cvs-files, und jene fuer 
+#	besitzer und gruppe schreibar! - oder user ist 'root'...
+
+# deb und deb-src
+#	fuer gleiche versionsnummern zuerst deb-src ausfuehren
+
+# am rande: 'intelligente' programme scheitern meist gerade dann, wenn jene 
+#	'intelligenz' gebraucht wuerde, sie sind selten sonderlich nuetzlich.
+#	darum 'weisz' die F4-configuration von sich aus so gut wie nichts.
+
+# die assembler-utilities und 'install' werden per vorgabe in /usr/local/bin 
+# 	erwartet. test auf vorhandensein der benoetigten programme &c
+#		UTLDIR=/usr/bin make-f4s cfg
+# 	mit den utils im 'normalen' standard-verzeichnis.
+
+# ------------------------------------------------------------------------------
+# == configuration anfang ======================================================
+# 	das muster "NAME=${NAME1:-${NAME2}}" besetzt NAME
+# 	aus bereits bekanntem NAME1, andernfalls aus der Vorgabe NAME2 
+# -- flags ---------------------------------------------------------------------
+
+# my private paranoia...
+#	ein (hoffentlich) hinreichend sicherer 'user':
+USER=hp
+#	wenn der nichts taugt, nimmt man sich selber:
+chown ${USER}  ${0}>/dev/null 2>&1||USER=$(id -nu)
+#	besitzer-gruppe der install- und cvs-verzeichnisse;
+#		evtl musz o.a. 'user' auch noch in gruppe 'staff' stecken,
+#		z.b beim Knoppix/Linux fuer /usr/bin u.dgl.
+GROUP=src
+#	mit 'users' versuchen, wenn 'src' scheitert
+chgrp ${GROUP} ${0}>/dev/null 2>&1||GROUP=users
+#	mit der eigenen gruppe versuchen, wenn 'usr' scheitert
+chgrp ${GROUP} ${0}>/dev/null 2>&1||GROUP=$(id -ng)
+
+# ------------------------------------------------------------------------------
+# zugriffsrechte fuer die installation
+# 	bei 'user'-spezifischer installation nach ${HOME}/(verzeichnisse) 
+#	sollten keine schwierigkeiten auftreten. fuer installation in die 
+#	systemverzeichnisse muessen ggf. mit 'root'-rechten ausfuehrbar sein:
+#		chgrp, chmod, chown, cp, gzip, install, ln, mv, rm
+
+# 	mit 'fakeroot' kann der buhei um 'user'-rechte und 'sudo'-zeugs evtl
+#	ueberfluessig gemacht werden:
+#		DEBUG=all fakeroot ./make-f4s install
+
+#	wenn 'fakeroot' nicht hilft, geht's vielleicht mit 'su', z.B:
+#		DEBUG=all su -c "./make-f4s install"
+#	wenn SD besetzt ist, werden die betr. programme entsprechend aufgerufen (s.u.)
+SD=;#sudo
+[ "$(id -un)" = "root" ]&&SD=
+# fuer 'sudo' fuegt man in /etc/sudoers z.b. bei o.g. USER die zeile(n) ein:
+#	hp localhost = NOPASSWD: /usr/local/bin/gzip,/usr/local/bin/ln,/usr/local/bin/chmod,\
+#				/usr/local/bin/chgrp,/usr/local/bin/chown,/usr/local/bin/install,\
+#				/usr/local/bin/rm,/usr/local/bin/cp,/usr/local/bin/mv
+
+# notfalls als 'root' die zugriffsrechte direkt einstellen:
+#	INSTDIR:
+#		chgrp src /usr/local/bin
+#		chmod -R ug+rwX /usr/local/bin
+#	ILIBDIR:
+#		mkdir /usr/share/doc/f4a
+#		chgrp src /usr/local/lib/f4a
+#		chmod ug+wrX,g+s /usr/share/doc/f4a
+#	IDOCDIR:
+#		mkdir /usr/local/lib/f4a
+#		chgrp src /usr/share/doc/f4a
+#		chmod ug+wrX,g+s /usr/local/lib/f4a
+#	IMANDIR:
+#		chgrp -R src /usr/share/man/
+#		chmod -R ug+wrX /usr/share/man/
+
+# ------------------------------------------------------------------------------
+
+#	F4 source directories' perms
+CHMODF="a+rX,ug+w"
+DPERM="0775"
+#	installed binaries directory
+CHMODB="a+rX,u+w"
+#	installed F4 lib directory
+CHMODL="a+rX,ug+w"
+#	installed F4 doc directory
+CHMODD="a+rX,ug+w"
+#	installed binaries and newly created dirs initial permissions
+BPERM="0755"
+#	installed docs permissions
+LPERM="0664"
+#	'install' program flags
+INSTBF="-p --backup=t"
+INSTUF="-g${GROUP} -o${USER}"
+INSTF="${INSTBF} ${INSTUF}"
+
+TOPDIR=$(pwd -P)
+
+# -- vorgabewerte holen/ermitteln ----------------------------------------------
+
+CFG="./i/cfg-$(id -un)"
+[ "${1}" != "cfg" ]&&{ [ -r "${CFG}" -a -n "${CFG}" ]&& . "${CFG}"||$(pwd)/$(basename ${0}) cfg; }
+
+# -- program name --------------------------------------------------------------
+
+# compiled to ${BINDIR}
+PROGNAM=${PROGNAM:-fig4th}
+
+# default, secondary 'magic' string for linux <file> command
+# 	re file <d/magic>; if set, vari F4MG passed to F4MAGIC:
+F4MG=${F4MG:-"%F4QF%"}
+
+# F4 BINARY installation NAME:
+#	DEBUG=all, cpl symbols, long asm listing & cross-ref
+PNAMA=f4g
+#	DEBUG=yes, cpl symbols, asm listing
+PNAMD=f4g
+#	DEBUG=no, not stripped, no additional debugging support
+PNAMN=f4a
+#	DEBUG unset or "" or "min", required symbols
+PNAMP=${PROGNAM}
+#	stripped, or w. DEBUG=strip, no debugging support
+PNAMS=f4a
+#	default
+INSTNAM=f4a
+
+# -- executeable control flags -------------------------------------------------
+
+# passed w. CPPFLGS
+# f4 by default starts with overwriting mode console text input
+EXPMD=
+#	change to inserting:
+EXPMD="-D__expect_ins"
+
+# -- installation directories --------------------------------------------------
+# -- define w. default value or, leave as passed into the script
+
+# dir/path praefices 
+#	output root dir, provisional for <debian/rules>
+DESTDIR=${DESTDIR-/}
+#	base dir
+PREFIX=${PREFIX:-usr/local}
+#	'files system standard' nach debian-manier, fuer man-page & andere docs
+DOCPREFIX=${DOCPREFIX:-${PREFIX}/share}
+
+# set up by make install, if not already present
+#	executeable to
+INSTDIR=${INSTDIR:-${PREFIX}/bin}
+#	installation locations cpl'd into f4 for the help word, editor &c,
+#	for straight adressability from within F4 should be the real path':
+#	(linked dirs would additionally require the 'readlink' system call)
+ILIBDIR=${ILIBDIR:-${PREFIX}/lib/f4a}
+IDOCDIR=${IDOCDIR:-${DOCPREFIX}/doc/f4a}
+IMANDIR=${IMANDIR:-${DOCPREFIX}/man/man1}
+
+# -- utilities -----------------------------------------------------------------
+
+# ermitteln, ob "${SD}" ausfuehrbar ist, und ggf. vorspann fuer die betr. 
+#	programmnamen besetzen; SU bleibt leer, wenn die probe scheitert:
+[ -n "${SD}" ]&&SU="$(id -un|grep "root">/dev/null||{ ${SD} chmod u+X ${DESTDIR}${INSTDIR} >/dev/null 2>&1&&which ${SD}; };) "||SU=
+#echo SU="$(id -un) { ${SD} chmod u+X ${INSTDIR} >/dev/null 2>&1&&which ${SD}; }"
+#echo SU=$SU>/dev/stderr
+
+CHMOD="${SU}chmod"
+CHOWN="${SU}chown"
+GZ="${SU}gzip"
+GZFL="-f9"
+LN="${SU}ln"
+LNFL="-f"
+MD="${SU}mkdir"
+MDFL="-p"
+RM="${SU}rm"
+RMFL="-f"
+#
+CA=cat
+GP=grep
+CVS2HTML=${CVS2HTML:-$(cd $TOPDIR;type -p ./a/cvslog2html)}
+CVS2HTML=${CVS2HTML:-$(type -p cvslog2html)}
+[ -z "${CVS2HTML}" ]||CVS2HTML="${CVS2HTML} 2>/dev/null"
+CVSLFILE="cvslog.html"
+#
+BM="/bin/mv"
+BMFL="-f"
+CP="/bin/cp"
+CPFL=""
+CB="${CP}"
+CBFL="--backup=t"
+BR="/bin/rm"
+BRFL="-f"
+## wenn's interessiert:
+##	allgemeine laber-option, z.b. bei <uninstall>
+#V="${V:-v}"
+#[ -z "${V}" ]||V=-${V}
+
+# zusammen mit 'kde' wird <convert> zur staendigen quelle immer wieder neuer fehler.
+# 	ansich nebensaechlich, aber bei 'cvs' und 'deb' fuer die inet-seiten benutzt
+# 	zudem: Vorsicht, die KDE3(-erzeugung mit 'konstruct') versaut - neben der
+# 	'graphik' allgemein! - auch die image-magick-programme!!!
+CV="/usr/bin/convert"
+
+# binutils, (g)cc...
+UTLDIR="${UTLDIR:-/usr/bin}"
+#	binutils version progs' affix (or empty)
+BUAFIX=${BUAFIX:-}
+#	GNU/FSF-ish stupidity might provide 'ginstall', instead. -> link it to 'install'
+INSTALL="${SU}${UTLDIR}/install"
+
+# assembler, binutils v2.12, 2.13, 2.14
+ASPROG=${ASPROG:-as}
+ASDIR="${ASDIR:-${UTLDIR}}"
+ASAFIX="${ASAFIX:-${BUAFIX}}"
+AS="${ASDIR}/${ASPROG}${ASAFIX}"
+
+# linker
+LDAFIX=${BUAFIX}
+LD="${UTLDIR}/ld${LDAFIX}"
+
+# remove garbage from the binary
+# NOTE:	cautiously apply binutils' <strip> which is another one of those highly efficient 
+#	GNU/FSF programs which, might strip an already stripped binary to almost nothing!
+ST=${ST:-$(type -p strip)}
+# 	if stripping always remove that nonsense
+STFLG="-R .comment -R .note"
+
+# "C" praeprotz
+# tested: gcc 2.95.4, cpp 2.95.4, gcc 3.3, cpp 3.3
+#	either, the latest "(gc)c" praeprocessor:
+## CPP=${CPP:-"$(type -p /usr/local/gcc-3.3/bin/cpp-3.3)"}
+#	or, 'gcc -E' if 'cpp' not available:
+## CPP=${CPP:-"$(type -p /usr/local/gcc-3.3/bin/gcc-3.3)"}
+#	if above not available:
+CPP=${CPP:-"$(type -p /usr/bin/cpp)"}
+#	if above not available:
+CPP=${CPP:-"$(type -p /usr/bin/gcc)"}
+#	if above not available:
+CPP=${CPP:-"$(type -p cpp)"}
+#	if above not available:
+CPP=${CPP:-"$(type -p gcc)"}
+[ -z "${CPP}" ]&&{ echo "	no praeprocessor found";exit -1; }
+# 	if gcc, append flag to termiate after praeprocessing
+[ "${CPP/cpp/}" == "${CPP}" ]&&CPP="${CPP} -E"
+
+# -- linux source files --------------------------------------------------------
+
+# path to linux sources, i.e. the header files e.g. in linux/include/asm-i386
+#	add data which aren'found by <./a/unistd-as> script to file <./i/lxdata.inc>
+LXSRC="${LXSRC:-/usr/src/linux}"
+LXINC=${LXSRC}/include
+# different lx kernels provide for asm dir's differently - too simple, otherwise?
+LXGEN=${LXINC}/asm-generic
+LXA86=${LXINC}/asm-i386
+LXASM=${LXINC}/asm
+#
+###	LXLIM=${LXINC}/linux/limits.h
+###	#	'mips' is the only fairly carefully and useably commented lx sources branch
+###	#	LXSIG provisional for path to signal numbers and names. re {.er} in f4x.scr.
+###	LXSIG=${LXINC}/asm-mips
+
+# -- archivierung --------------------------------------------------------------
+
+#	paketname
+PN=f4a
+
+# mal ein beispiel, warum die unabhaengigkeit von fremden, insbes. GNU & FSF(!), 
+#	programmen so wichtig ist. derlei bloedsinnige willkuermasznahmen sind
+#	bei programmen dieser herkunft keineswegs selten - s.auch 'ginstall', das
+#	ein paar bescheuert hingemurkste makefiles haben wollen, ob dasselbe(!) 
+#	system es nun mitliefert, oder nicht...:
+# debian/gnu/fsf(?) 'tar' w. new set of flags, again:
+#	archiver prog & affix ('bzip2' changed once more, this time "I" -> "j")
+TA="tar cjpvf"
+TX="tar.bz2"
+
+#	where to storeing the archive after make tar or cvspak
+SAVEDIR="/archive/f/${PN}"
+#	the (i.e. my) private upload or, 2ndary archive dir
+UPDIR="/hpg5/up-ib"
+
+# == config ende ===============================================================
+
+# -- vorgabewerte --------------------------------------------------------------
+
+unset min
+[ "${1}" == "min" ]&&DEBUG=min
+DEBUG=${DEBUG-strip}
+
+# ------------------------------------------------------------------------------
+# source dirs
+
+TOPDIR=$(pwd -P)
+
+# subdirs
+#	a:dmin b:in d:oc f:orth i:nclude l:isting o:ld s:ource t:est u:til
+SUBDIR="a b d f i l o s t u"
+
+ADMDIR=${TOPDIR}/a
+BINDIR=${TOPDIR}/b
+DOCDIR=${TOPDIR}/d
+LIBDIR=${TOPDIR}/f
+INCDIR=${TOPDIR}/i
+LISDIR=${TOPDIR}/l
+OLDDIR=${TOPDIR}/o
+SRCDIR=${TOPDIR}/s
+TSTDIR=${TOPDIR}/t
+
+# ------------------------------------------------------------------------------
+# cpl control
+
+# lx version: console signal handling is different between versions!
+head -n4 ${LXSRC}/Makefile|while read l
+do l=${l//\ /};echo "${l%%=*}=${l##*=}";done>${INCDIR}/lxvers
+. ${INCDIR}/lxvers
+export KERN=${VERSION}.${PATCHLEVEL}.${SUBLEVEL}${EXTRAVERSION} LXV=${VERSION}${PATCHLEVEL}
+
+CPPDBG=
+#	<cpp> to resolving the #define-s etc.
+CPPMDE="${CPPMDE} -P"
+CPPMDE="${CPPMDE} -x assembler-with-cpp"
+#	ohne all den "C"-spezifischen mist
+CPPMDE="${CPPMDE} -nostdinc -nostdinc++"
+#	auch vordefiniertes 'macro'-zeug lassen wir raus
+CPPMDE="${CPPMDE} -undef"
+#	list '#failed' decision branches after #if &c
+#CPPMDE="${CPPMDE} -ifoutput"
+# 	preventing 'errror's from re-definition w. F4 "linux" vocabulary:
+# 	irgendwo, weiszdergeierwo, definiert diser bek*te c*-krempel einen wert "linux" - siehe <cpp -dM irgendeinname>
+CPPFLS="${CPPFLS} -Dlinux=\"linux\""
+CPPFLS="${CPPFLS} -DF4MAGIC=\"${F4MG}\""
+CPPFLS="${CPPFLS} -Dlxver=\"${LXV}\""
+CPPFLS="${CPPFLS} -Dorign=0x08048000"
+[ "${DEBUG}" == "min" ]&&CPPFLS="${CPPFLS} -D_f4min_"||CPPFLS="${CPPFLS} -U_f4min_"
+
+CPPINC=
+#
+
+# -- AS control ----------------------------------------------------------------
+
+# assembler
+# 	AS "intel" or "att" syntax mode - 'intel' useless! i.e. incomplete & false
+ASYX="att"
+# 	reserve
+ASMDE=
+#
+[ -n "${NOLIST}" ]||{
+ASFLG="${ASFLG} --listing-lhs-width=2"
+#	'as' listing mode: 
+#		c:conditional 
+#		d:w/o debug 
+#		h:+source 
+#		l:include assembly 
+#		m:expand macroes 
+#		n:no forms (pages &c) 
+#		s:symbols
+#		=:list-file name
+ASFLG="${ASFLG} -alncd"
+ASFLG="${ASFLG} -am"
+
+# 	list-file, should be last of listing flags (re AS doc)
+LISF="-acs=${LISDIR}"
+
+#	debugging 
+    [ "${DEBUG}" == "all" ]&&ASDBG="-ah ${ASDBG}"
+}
+# -- linker control ------------------------------------------------------------
+
+LDFLGS="${LDFLGS} -znodefaultlib"
+LDFLGS="${LDFLGS} -zorigin"
+LDFLGS="${LDFLGS} -Bstatic"
+LDFLGS="${LDFLGS} --discard-locals"
+LDFLGS="${LDFLGS} --strip-debug"
+#	asm xref list - only '.global's will be listed but,
+#	'as' generates no short branches to the rsp labels!
+LDFLGS="${LDFLGS} --cref"
+# linker map-file
+LDMLIS="-M"
+
+# -- OS-specific ---------------------------------------------------------------
+
+# the common utility for F4
+UNISTS=${TOPDIR}/a/unistd-ns
+if [ "${ASYX}" == "nasm" ];then
+#	asm specific version: "nasm"
+    UNISTD=${TOPDIR}/a/unistd-na
+else
+#	asm specific version: "as", att syntax (AS intel syntax utterly broken, thus not supported}
+    UNISTD=${TOPDIR}/a/unistd-as
+fi
+# common source
+ASMINC="${ASMINC} -I${LXINC} -I${LXGEN} -I${LXASM} -I${LXA86}"
+# collecting i/o files & devices control defns to file ./i/fcntl.h.inc, by ./a/unistd-as
+#	error numbers & messages, included w. fig4th.S, also passed to F4
+
+#	file in differnt dirs 2.2 and after; and cpp won't find 'include <...>', thus:
+LXRNO=${INCDIR}/errno.h
+#
+LXRFN=errno\*.h
+LXRFI="$(find ${LXINC}/ -depth -name ${LXRFN} -print|grep "asm-i386\|asm-generic\|${LXINC}/linux")"
+###echo "LXINC=${LXINC} LXRFI=${LXRFI}">/dev/stderr;exit 1
+#	signal numbers (provisional, n.i.)
+ERSGN=${LXASM}/signal.h
+#	file access selectors and modifiers
+FCNTL=${LXASM}/fcntl.h
+#	ioctl codes
+IOCTL=${LXASM}/ioctls.h
+#	memory mapping
+MMAN=${LXASM}/mman.h
+MMANL=${LXINC}/linux/mman.h
+#	terminal control
+TMIOS=${LXASM}/termios.h
+TMBIT=${LXASM}/termbits.h
+#	re include/asm/term{io,bit}s.h
+#	disps into struct termios
+TRMDS="\
+.set termios_c_iflag,0\n\
+.set termios_c_oflag,4\n\
+.set termios_c_cflag,8\n\
+.set termios_c_lflag,12\n\
+.set termios_c_line,16\n\
+.set termios_c_cc,17"
+#	size of <termios> structure
+TRMSZ='.set termios_size,(termios_c_cc+NCPPS+3)/4'
+
+# environment vari, used if set, by <unistd-as>
+LXUST=/include/asm-i386/unistd.h
+# kernel version file
+LXVER=/include/linux/version.h
+# page size
+LXPGS=/include/asm-i386/page.h
+
+# ------------------------------------------------------------------------------
+
+FVERSION="$(./a/relse.sh r.v.x.t)"
+PORT_VER="-a-"
+PACKAGE="linux-${PROGNAM}${PORT_VER}${FVERSION}"
+TARFILE="${SAVEDIR}/${PACKAGE}.${TX}"
+DOCFILES="${TOPDIR}/d/[^CHMODal]*[^0-9~] ${TOPDIR}/d/*f4 ${TOPDIR}/i/version.inc"
+[ -z "${CVS2HTML}" ]||DOCFILES="${DOCFILES} ${DOCDIR}/${CVSLFILE}"
+[ -z "${CVS2HTML}" ]&&CVS2HTML='# '
+LIBFILES="${TOPDIR}/f/[^CHMOD]*[^~]"
+MANFILE="${TOPDIR}/d/f4.1"
+GLOFILES="${INCDIR}/${PROGNAM}.inc ${INCDIR}/${PROGNAM}.h ${INCDIR}/${PROGNAM}m.inc $(find ${SRCDIR} -name \*.S)"
+
+# generated inc-s
+GFILES="scfctl.inc scdefs.inc scdata.inc"
+# all include-files, other sequence(!)
+IFILES="scfctl.inc scdefs.inc lxdata.inc scdata.inc kd.inc"
+SFILES="$(find ${SRCDIR} -name \*.S)"
+
+AFILES=
+for i in ${IFILES} ${SFILES};do f="$(basename ${i})";AFILES="${AFILES} ${LISDIR}/${f%.*}.s";done
+
+# log-files (spielt nicht)
+LOGA=' 2>&1|tee -a LOG.a'
+LOGM=' 2>&1|tee -a LOG.m'
+LOGC=' 2>&1|tee -a LOG.c'
+LOGL=' 2>&1|tee -a LOG.l'
+LOGP=' 2>&1|tee -a LOG.p'
+RMLOG="${RM} ${RMFL} ${LOGA##* } ${LOGM##* } ${LOGC##* } ${LOGL##* } ${LOGP##* }"
+
+[ -z "${LOGM}" ]&&{
+    WRN=
+}||{
+    WRN="grep ': Warning: \|: Error: ' ${TOPDIR}/LOG.m|cut -d: -f2|while read n;do head -n"'$(('${n}'))'" ${LISDIR}/${PROGNAM}.s|tail -n1&&echo;done"
+}
+
+# tarpak
+FILES="INSTALL *lsm Makefile b/Makefile i/version.inc i/*data.inc ${GLOFILES}\
+     a/*[^0-9~] d/*[^0-9~] d/*f4 f/*[^0-9~] f/*f4 s/*[^0-9][^rf~] t/*[^0-9~] b/${PROGNAM}"
+
+# ------------------------------------------------------------------------------
+# accumulate flag vari
+
+CPPFLS="${CPPFLS} -Dversion=$(${ADMDIR}/relse.sh)"
+# 	pass install/doc dirs to F4, for the rsp. words
+[ -n "${IDOCDIR}" ]&&CPPFLS="${CPPFLS} -Didocdir=${DESTDIR}${IDOCDIR}"
+[ -n "${ILIBDIR}" ]&&CPPFLS="${CPPFLS} -Dilibdir=${DESTDIR}${ILIBDIR}"
+[ -n "${LXRNO}" ]  &&CPPFLS="${CPPFLS} -Dlxerno=\"${DESTDIR}${LXRNO}\""
+[ -n "${F4MG}" ]   &&CPPFLS="${CPPFLS} -DF4MAGIC=\"${F4MG}\""||CPPFLS="${CPPFLS} -DF4MAGIC=\"%F4QF%\""
+
+[ -n "${LISF}" ]&&ALISF="${LISF}/${PROGNAM}.lis"
+ASMINC="${ASMINC} -I${INCDIR} -I ${BINDIR} -I ${LISDIR}"
+
+ASFLGS=" ${ASMDE}  ${ASDBG}  ${ASFLG}  ${ASMINC} ${ALISF}"
+
+# cpp common includes ('-imacros' which, get evaluated but the text not copied)
+SCPPINC="-imacros ${LXRNO} -imacros ${INCDIR}/syntax.inc -imacros ${INCDIR}/fig4th.h -imacros ${INCDIR}/fig4th.inc -imacros ${INCDIR}/fig4thm.inc"
+# cpp include-files flags
+ICPPFLGS="${CPPMDE} ${CPPDBG} ${CPPFLS} ${CPPINC} ${ASMINC} ${EXPMD}"
+# cpp source-files flags
+SCPPFLGS="${CPPMDE} ${CPPDBG} ${CPPFLS} ${CPPINC} ${ASMINC} ${EXPMD}"
+
+# prevent cpp wasting time searching
+unset C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH DEPENDENCIES_OUTPUT SUNPRO_DEPENDENCIES
+CPATH="${INCDIR} ${BINDIR}"
+
+# ------------------------------------------------------------------------------
+
+# ret 0=true if any file in ./i or ./s dirs missing or newer than the newer one 
+#	of ./b/${PROGNAM}.o or file 'INSTALLED' or, if binary doesn't exist or,
+#	if different current linux kernel version found
+function neu () {
+local d
+    [ -r "${INCDIR}/lxv.inc" ]||return 0
+    [ "$(${CA} ${INCDIR}/lxv.inc)" == "${LXV}" ]||{ ${RM} ${RMFL} ${LXRNO} ${GFILES};return 0; }
+    d=${BINDIR}/${PROGNAM}
+    [ -x "${d}" ]||{ return 0; }
+    [ -r "${DOCDIR}/INSTALLED" -a "${DOCDIR}/INSTALLED" -nt "${d}" ]&&d=${DOCDIR}/INSTALLED
+    test -n "$(find ${SRCDIR} ${INCDIR} -newer ${d})"
+}
+#n=$?;echo HIER>/dev/stderr;return $n
+
+function asm () {
+    [ -n "${DEBUG}" ]&&echo "${@}">/dev/tty&&echo>/dev/tty||:
+#    [ -n "${DEBUG}" ]&&echo "${@}">/dev/stderr&&echo>/dev/stderr 2>/dev/null||:;# <= versagt bei X-windows/rxvt
+    [ "${DEBUG}" == "all" ]&&{ ${@} 2>> LOG.a;er=${?};return; }
+    ${@};er=${?}
+}
+# for the './a/unistd...' script(s)
+export LXSRC LSUST LXVER LXPGS FCNTL IOCTL MMAN TMIOS TMBIT TRMDS TRMSZ
+
+# ------------------------------------------------------------------------------
+
+function cpl () {
+local a er f h i n
+# ------------------------------------------------------------------------------
+# prog. name
+#	if cpl'd with debugging data
+case "${DEBUG}" in
+    all)	INSTNAM=${PNAMA};DHF="-D_dh_=1";;# f4g und dummy header
+    min)	INSTNAM=${PNAMN};STFLG="-s ${STFLG} -R .sbss";;# f4a
+    no)		INSTNAM=${PNAMN};;# f4a
+    strip)	INSTNAM=${PNAMS};STFLG="-s ${STFLG} -R .sbss";;# f4a
+    yes)	INSTNAM=${PNAMD};STFLG="-X ${STFLG}";;# f4g
+    *)		INSTNAM=${PNAMP};STFLG="-s ${STFLG}";DEBUG=strip;;# fig4th
+esac
+
+for a in "${@}";do
+[ -z "${DEBUG}" ]||echo "    ${a}">/dev/tty;#>/dev/stderr 2>/dev/null||: ;# <= versagt bei X-windows/rxvt
+case "${a}" in
+all)	cpl usr f4 doc
+	;;
+f4|${PROGNAM})
+	neu||return -1
+	/bin/rm -f ./LOG.a
+	for i in ${SUBDIR};do [ -d "${TOPDIR}/${i}" ]||${MD} ${MDFL} -m${DPERM} ${TOPDIR}/${i}||:;done
+	${RMLOG}
+	[ -x ${UNISTD} -a -s ${UNISTD} ]||${LN} ${LNFL} ${UNISTS} ${UNISTD}
+	echo ${LXV}>${INCDIR}/lxv.inc
+	[ -L "${LXINC}/asm" ]||${LN} ${LNFL} -s ${LXINC}/asm-i386 ${LXINC}/asm||{ echo "lx kernel 'asm' dir";return 1; }
+	[ ! -L "${LXRNO}" ]||${BR} ${BRFL} "${LXRNO}"
+	[ -r "${LXRNO}" ]||${CA} ${LXRFI}>${LXRNO}
+	for i in ${GFILES};do [ -r ${INCDIR}/${i} ]&&continue;(cd ${INCDIR};${UNISTD});break;done
+	for i in ${IFILES};do asm ${CPP} ${DHF} ${ICPPFLGS} ${INCDIR}/${i} -o ${LISDIR}/${i%.*}.s;done
+	for i in ${SFILES};do f="$(basename ${i})";asm ${CPP} ${DHF} ${SCPPFLGS} ${SCPPINC} ${i} -o ${LISDIR}/${f%.*}.s;done
+	asm ${AS} ${ASFLGS} -o ${BINDIR}/${PROGNAM}.o ${LISDIR}/${PROGNAM}.s||return 1
+	[ -n "${LDMLIS}" ]&&
+	    asm ${LD} ${LDFLGS} -o${BINDIR}/${PROGNAM} ${BINDIR}/${PROGNAM}.o ${LDMLIS} > ${LISDIR}/f4s.ld-map||
+		asm ${LD} ${LDFLGS} -o${BINDIR}/${PROGNAM} ${BINDIR}/${PROGNAM}.o||return 2
+	(( ${?} ))||( cd ${LISDIR};${LN} ${LNFL} -s ../b/${PROGNAM} ./${PROGNAM} )
+	cpl usr||:
+	[ "${DEBUG}" != "strip" ]||{ ${ST} ${STFLG} ${BINDIR}/${PROGNAM}&&DEBUG=; }
+	;;
+new)	cpl empty all doc
+	;;
+stripped|min)
+	DEBUG=strip cpl f4
+	;;
+f4g)	DEBUG=yes cpl f4
+	;;
+f4a)	DEBUG=no cpl f4
+	;;
+f4e|f4ed) cpl f4a
+	echo "	cpl 'f4ed'..."
+	${BINDIR}/fig4th lload f4ed "lload save' save' ${BINDIR}/f4ed' bye"||:
+	echo "	...dun"
+	;;
+check)	(
+	    cd ${TOPDIR}
+	    [ -x ${BINDIR}/${PROGNAM} ]||cpl all
+	    ${BINDIR}/${PROGNAM} lload f4 o hex lload 'elf! lload #er' "save' ${LISDIR}/ttt'" v v cr bye
+	    h=;[ -r "${DESTDIR}${IDOCDIR}/glossary" ]&&h="help cc"
+	    asm ${LISDIR}/ttt lload cc cc ${h} see cc dump libdir 222 dump -103 message cr bye||:
+	    [ "${er}" == "0" ]&&echo -e "\a\ttest passed"||echo -e "\n\a\t\ttest failed w. error code ${er}"
+	    ${RM} ${RMFL} ${LISDIR}/ttt
+	);;
+doc)
+	${ADMDIR}/mg ${DOCDIR} ${GLOFILES}
+	${CVS2HTML} > ${DOCDIR}/${CVSLFILE}||:
+	(
+	    cd ${DOCDIR}
+	    echo '.TH "F4" "1" "F4-'$(${ADMDIR}/relse.sh)'" "hp '$(date +%d.%m.%Y)'" "F4 Forth Compiler/Interpreter"'>${MANFILE}t
+	    n="$(wc -l ${MANFILE} 2>/dev/null)";n="${n// /}";n="${n%%/*}";tail -n$((${n}-1)) ${MANFILE}>>${MANFILE}t
+	    i="$(wc -l ${MANFILE}t 2>/dev/null)";i="${i// /}";i="${i%%/*}";[ $((${n})) -eq $((${i})) ]&&${BM} ${BMFL} ${MANFILE}t ${MANFILE}
+	);;
+clean)	(${RM} ${RMFL} -r \*.o;${RM} ${RMFL} ${BINDIR}/${PROGNAM};cd ${INCDIR};${RM} ${RMFL} ${GFILES})
+	;;
+empty)	cpl clean
+	${RM} ${RMFL} -r \*~ debian/tmp
+	(cd ${LISDIR};${RM} ${RMFL} \*.s \*.lis)
+	${RM} ${RMFL} ${DOCDIR}/INSTALLED
+	;;
+uninstall)
+	${RM} ${RMFL} ${V} ${DESTDIR}${INSTDIR}/${INSTNAM} \
+			${DESTDIR}${INSTDIR}/${INSTNAM}.~[1-90]~ \
+			${DESTDIR}${INSTDIR}/${INSTNAM}.~[1-90][1-90]~ \
+			${DESTDIR}${IDOCDIR}/*~[1-90]* \
+			${DESTDIR}${ILIBDIR}/*~[1-90]*||:
+	echo "binaries \"${DESTDIR}${INSTDIR}/${INSTNAM}"'*'"\" and back-up files in \"${DESTDIR}${IDOCDIR}/\" and \"${DESTDIR}${ILIBDIR}/\" deleted"
+	;;
+install)
+	cpl doc st
+	cpl idir usr ins ibin ilib idoc iman||echo "install failed (${?}): ${BINDIR}/${PROGNAM} -> ${DESTDIR}${INSTDIR}/${INSTNAM}"
+	;;
+idir)	${INSTALL} -m${BPERM} ${INSTF} -d ${DESTDIR}${INSTDIR} ${DESTDIR}${ILIBDIR} ${DESTDIR}${IDOCDIR} >/dev/null 2>&1||
+	${INSTALL} ${INSTBF}           -d ${DESTDIR}${INSTDIR} ${DESTDIR}${ILIBDIR} ${DESTDIR}${IDOCDIR} >/dev/null 2>&1||
+	    {
+		{ ${INSTALL} ${INSTF} -d ${DESTDIR}${INSTDIR} >/dev/null 2>&1||[ -d "${DESTDIR}${INSTDIR}" ]||echo -e "\a\n\t\e[7minstall I:'${DESTDIR}${INSTDIR}' failed!\e[27m"; }&&
+		{ ${INSTALL} ${INSTF} -d ${DESTDIR}${IDOCDIR} >/dev/null 2>&1||[ -d "${DESTDIR}${IDOCDIR}" ]||echo -e "\a\n\t\e[7minstall D:'${DESTDIR}${IDOCDIR}' failed!\e[27m"; }&&
+		{ ${INSTALL} ${INSTF} -d ${DESTDIR}${ILIBDIR} >/dev/null 2>&1||[ -d "${DESTDIR}${ILIBDIR}" ]||echo -e "\a\n\t\e[7minstall L:'${DESTDIR}${ILIBDIR}' failed!\e[27m"; }
+	    }||{ echo -e "\a\n\t\e[7minstall dirs failed!\e[27m";exit 1; }
+	;;
+ibin)	{ ${INSTALL} -m${BPERM} ${INSTBF} -o${USER} ${BINDIR}/${PROGNAM} ${DESTDIR}${INSTDIR}/${INSTNAM} >/dev/null 2>&1||${CB} ${BINDIR}/${PROGNAM} ${DESTDIR}${INSTDIR}/${INSTNAM}; }&&
+	    echo "$(date) : ${PROGNAM} bin '"${DESTDIR}${INSTDIR}/${INSTNAM}"'" >./d/INSTALLED&&
+	    echo -e "\a\t${PROGNAM} bin : ${INSTNAM}   => '"${DESTDIR}${INSTDIR}/"'"||:
+	;;
+ilib)	{ ${INSTALL} -m${LPERM} ${INSTF} ${LIBFILES} ${DESTDIR}${ILIBDIR} >/dev/null 2>&1||${CB} ${LIBFILES} ${DESTDIR}${ILIBDIR}; }&&
+	    echo "$(date) : ${PROGNAM} lib '"${DESTDIR}${ILIBDIR}"'" >>./d/INSTALLED&&
+	    echo -e "\a\t${PROGNAM} lib : ./f/* => '"${DESTDIR}${ILIBDIR}/"'"||:
+	;;
+iman)	{ ${INSTALL} -m${LPERM} ${INSTF} ${MANFILE} ${DESTDIR}${IMANDIR}/ >/dev/null 2>&1||${CB} ${MANFILE} ${DESTDIR}${IMANDIR}/; }&&
+	${CHMOD}    ${CHMODD}  ${DESTDIR}${IMANDIR} >/dev/null 2>&1&&
+	    echo "$(date) : ${PROGNAM} man $(basename ${MANFILE}) '"${DESTDIR}${IMANDIR}/"'" >>./d/INSTALLED&&
+	    echo -e "\a\t${PROGNAM} man  $(basename ${MANFILE}) : => '"${DESTDIR}${IMANDIR}/"'"&&
+	    ${GZ} ${GZFL} ${DESTDIR}${IMANDIR}/$(basename ${MANFILE}) ||:
+	;;
+idoc)	{ ${INSTALL} -m${LPERM} ${INSTF} ${DOCFILES} ${DESTDIR}${IDOCDIR}/ >/dev/null 2>&1||${CB} ${DOCFILES} ${DESTDIR}${IDOCDIR}/; }&&
+	    echo "$(date) : ${PROGNAM} doc '"${DESTDIR}${IDOCDIR}"'" >>./d/INSTALLED&&
+	    echo -e "\a\t${PROGNAM} doc : ./d/* => '"${DESTDIR}${IDOCDIR}/"'"||:
+	;;
+cvs)	cpl ver cvslog vari
+	${SU} ${ADMDIR}/pc
+	;;
+pak|tar|tarpak)
+	cpl ver cvslog vari
+	${SU} ${ADMDIR}/pc keep
+	;;
+deb)	[ "$(id -nu)" == "root" ]||{ echo -e "\a\n\tonly 'root' can make the debian package">/dev/stderr;exit 6; }
+	cpl ver vari
+	(   DESTDIR=${TOPDIR}/debian/tmp/ ./debian/rules binary 2>&1 | tee LOG.d 
+	    ${CP} ${CPFL} ${TOPDIR%/*}/f4a_$(${TOPDIR}/a/relse.sh deb)_i386.deb /hpg5/up-ib/||pwd -P
+	);;
+deb-src)
+	[ "$(id -nu)" == "root" ]||{ echo -e "\a\n\tonly 'root' can make the debian package">/dev/stderr;exit 6; }
+	(   cd ${TOPDIR}
+	    ./a/commit '-cpl sources package-'
+	    cd ..
+	    mkdir deb-src
+	    cd deb-src
+	    cvs -d /var/lib/cvs co f4a
+	    er="$(./f4a/a/relse.sh deb)"
+	    mv ./f4a ./f4a-${er}
+	    ( cd ./f4a-${er};debian/rules upd )
+	    dpkg-source -b -sn ./f4a-${er}
+	    ${CP} ${CPFL} ./f4a_${er}.* /hpg5/up-ib/||pwd -P
+	    cd ..
+	    /bin/rm -rf ./deb-src
+	);;
+usr)	${CHMOD} -R ${CHMODF} ${TOPDIR} >/dev/null 2>&1||:
+	${CHOWN} -R ${USER}   ${TOPDIR} >/dev/null 2>&1||:
+	;;
+ins)    ${CHMOD}    ${CHMODB} ${DESTDIR}${INSTDIR} >/dev/null 2>&1||:
+	${CHMOD} -R ${CHMODL} ${DESTDIR}${ILIBDIR} >/dev/null 2>&1||:
+	${CHMOD} -R ${CHMODD} ${DESTDIR}${IDOCDIR} >/dev/null 2>&1||:
+	;;
+st)	cpl all
+	[ "${DEBUG}" == "all" -o "${DEBUG}" == "yes" ]||\
+	{ [ -n "${STFLG}" -a -n "${ST}" ]&&${ST} ${STFLG} ${BINDIR}/${PROGNAM}&&[ "${DEBUG}" == "strip" ]&&DEBUG=||:; }
+	;;
+vari)	export USER GROUP CHMODF DPERM CHMODB CHMODL CHMODD BPERM LPERM INSTF 
+	export CHMOD CHOWN
+	export PROGNAM INSTNAM PREFIX
+	export INSTDIR ILIBDIR IDOCDIR IMANDIR
+	export SUBDIR ADMDIR BINDIR DOCDIR LIBDIR INCDIR LISDIR OLDDIR SRCDIR TSTDIR
+	export LDFLGS LD ICPPFLGS SCPPFLGS CPP AS CP CB CV INSTALL LN LNF="${LN}" MD RM BM BR STFLG ST SU
+	export GZFL LNFL MDFL MVFL RMFL BMFL CBFL BRFL
+	export FVERSION PORT_VER PACKAGE TARFILE DOCFILES GLOFILES LIBFILES FILES MANFILE
+	export CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH DEPENDENCIES_OUTPUT SUNPRO_DEPENDENCIES
+	export LXRFN LXRNO LXRFI
+	export neu
+	;;
+cfg)	local er i n k
+	er=
+	echo -n "# ">${CFG}
+	uname -a>>${CFG}
+# vari which must be set to something valid
+	for i in DESTDIR UTLDIR PREFIX DOCPREFIX ASDIR LXSRC LXINC
+	do [ -d "${DESTDIR}${!i}" -a -x "${DESTDIR}${!i}" ]&&echo "${i}=\"\${${i}:-${!i}}\"">>${CFG}||er="${er}\n\t${i}=\"${!i}\" ";done
+	[ -z "${er}" ]||{ echo -e "\a\n missing required vari values:${er}\n";er=;x=1; }
+# utils which may be dispensed with
+	for i in CV CVS2HTML
+	do n=${!i% *};n=${n#* };[ -x "${n}" ]&&echo "${i}=\"\${${i}:-${n}}\"">>${CFG}||er="${er}\n\t${i}=\"${n}\" ";done
+	[ -z "${er}" ]||{ echo -e "\n\n missing utilities:${er}\n";er=; }
+# required support progs
+	for i in AS BR CHMOD CHOWN CPP CP CB INSTALL LD LN MD RM ST LD
+	do  n=${!i% *};n=$(type -p ${n#* })
+	    [ -x "${n}" ]&&echo "${i}=\"\${${i}:-${!i}}\"">>${CFG}||er="${er}\n\t${i}=\"${n}\" "
+	done
+	[ -z "${er}" ]||{ echo -e "\a\n missing or non-executeable required utilities:${er}\n";er=;x=1; }
+# host/system dependent refs
+	for i in LXRNO LXRFI
+	do  er=
+	    for k in ${!i};do n="${k#* }";n="${n% *}";[ -n "${n}" -a -r "${n}" ]||er="${er} ${n}";done
+	    [ -z "${er}" ]&&echo "${i}=\"${!i}\"">>${CFG}||er="\n\t${i}=\"${er}\""
+	done
+	[ -z "${er}" ]||{ echo -e "\a\nnon-accessible required reference files:${er}"; }
+	#[ -z "${er}${x}" ]||{ rm -f ${CFG};exit 1; }
+	;;
+cvslog)	cvs log -N ${INCDIR}/version.inc >${DOCDIR}/cvslog-lN-${TOPDIR##*/}.txt
+	;;
+# unsinnige fehlermeldung; kommt, seitdem mit kde3 an imagemagick rumgefummelt wurde:
+#	convert: Unable to open file () [No such file or directory].
+ver)    echo -e " ${a} # $(date +%Y-%m-%d)\n\n" > ${DOCDIR}/${PN}.version.txt;wait
+	${CV} -monochrome -negate -size 320x30 -font lucida -trim text: ${DOCDIR}/${PN}.version.txt ${DOCDIR}/${PN}.version.jpg
+	${CP} ${CPFL} ${DOCDIR}/${PN}.version.txt ${DOCDIR}/${PN}.version
+	;;
+*)	echo;echo "${0} [ all | cfg | clean | cvs | deb{,-src} | doc | empty | {un,}install | min | new | pak | stripped ]"
+	echo "	cfg		check for accessibility to required data & utilities"
+	echo "	clean		remove generated source files"
+	echo "	empty		'clean' & remove intermediate and back-up files"
+	echo "	all		recompile if a source file newer than binary or, binary not present"
+	echo "	min		stripped, minimal code binary - saves about 8K wrt 'full size'"
+	echo "	new		forcedly recompile w. 'empty all doc' and, 'nel' if DEBUG=all"
+	echo "	stripped	regardless of \$DEBUG, compile the stripped binary"
+	echo "	doc		extract the glossary from source files (for the {help} word)"
+	echo "	check		'all' & check whether F4 orderly compiles a linux/ELF executeable"
+	echo "	install		copy binary, doc and hi-level sources to the rsp. directories"
+	echo "	uninstall	delete binary in install-directory."
+	echo "	cvslog		list of 'cvs commit' messages, file './d/cvslog-lN-f4a.txt'
+	"
+	echo "	cvs		generate distribution package from the cvs tree"
+	echo "	pak		tar-pak from <make cvs> but w. unchanged version no."
+	echo "	deb		debian style binaries' archive, unchanged version no."
+	echo "	deb-src		debian style sources' archive, w. next cvs version no."
+	echo "	..(any)..	displaying this text w. any other arg"
+	;;
+esac
+done
+}
+
+# ------------------------------------------------------------------------------
+# -- nun maken wir...
+
+c="${@}"
+[ -z "${c}" ]&&c=-h
+cpl ${c}
+
+# -- ...und hoffen das beste.
+# ------------------------------------------------------------------------------
+# ==============================================================================
+# hp'3.6.03 # eof #

@@ -1,0 +1,181 @@
+#! /bin/sh
+# Mit Aug 29 23:55:15 GMT 2001
+# put cvs distribution, sources only
+# for F4, 1/2003 h-peter recktenwald <lx@lxhp.in-berlin.de>
+# xec from main dir, script in 1st level sub-dir
+
+fu ()
+{
+local a d f i p t u x cp gz CP CV MV RM SD SU
+
+# -------------------------------------------------------------------------------------------- #
+
+# top dir aus pfad=${0}="/(root-dir)/(prog-dir)/subdir)/(scriptname)"
+d=${0%/*};d=${d%/*}
+# programm-name aus pfad=${d}="/(root-dir)/(prog-dir)/"
+p=${d##*/}
+
+# cvs-root
+cvsdir=/var/lib/cvs
+
+# tar changes switches, ever so often: bzip2 was "Y", then "I", now "j" (11/02, debian 3.0)
+[ -z "${TAR}" ]&&TAR='tar -sScjpvf'
+
+# gruppenzugehoerigkeit der archivierten files
+fgroup=users
+
+# -------------------------------------------------------------------------------------------- #
+
+# weil das von "kde"/"konstruct" vermurkste 'display' sonst seine eingabedatei nicht erkennt!
+PATH=.:${PATH}
+
+# <make> replacement
+MK="./make-f4s"
+
+# sudoer program name
+SD=sudo
+SU=$( [ "${USER}" == "root" ]||{ ${SD} chmod u+r ../i/version.inc >/dev/null&&echo $(which ${SD}); }; )
+echo "SU='${SU}' # whether utils should or can be executed per ${SD}:">/dev/tty
+
+# utilities
+cg="/bin/chgrp -f"
+CG="${SU} ${cg}"
+cm="/bin/chmod -f"
+CM="${SU} ${cm}"
+CP=$(which cp)
+cp="/bin/cp"
+gz="gzip -9c"
+md="/bin/mkdir"
+mv="/bin/mv"
+MV=$(which mv)
+RM="/bin/rm -f"
+ST=${ST:-$(type -p strip)}
+ST=${ST:-true}
+UP=$(type -p upx)
+UP=${UP:-true}
+
+# Vorsicht, KDE3 versaut (neben der 'graphik' allgemein(!) auch) die image-magick-programme!!!
+CV=/usr/bin/convert
+
+# version beibehalten, wenn 1. arg an ${0} "keep" heiszt
+u=
+[ "${1}" == "keep" ]&&{ u="${1}";shift; }
+
+# -------------------------------------------------------------------------------------------- #
+
+cd ${d};# top dir
+
+r=$(${d}/a/relse.sh r.v.x.t)
+t=${p%.*};t=${p%-*}
+a=${t}-${r}.src.tar.bz2
+
+${MK} empty
+
+# update cvs to current state
+(
+	export CVSROOT=${cvsdir}
+	[ -z "${u}" ]&&./a/commit -m "${p} -rel- ${r}"||cvs commit -m "${p} -rel- ${r}"
+)
+
+# forth dirs
+cd ../
+${md} 		./t 2>/dev/null||:
+${cg} ${fgroup} ./t 2>/dev/null||:
+${CM} a+rwX,g+s ./t 2>/dev/null||:
+
+# temp dir for cvs package
+cd ./t/
+${RM} -r ./${t} ./${t}-${r}
+echo "$(pwd)/../${a}" > LOG.p
+(
+	export CVSROOT=${cvsdir}
+	cvs -d${cvsdir} co ${t}
+	cd ${t}
+	${MK} stripped
+	${MK} ilib||:
+	${ST} ./b/fig4th
+	${UP} ./b/fig4th
+	${UP} ./b/f4ed||:
+	${RM} ./l/*[spl] ./b/*[so] ./LOG*
+	${cg} -R ${fgroup} . 2>/dev/null||:
+) 2>&1|tee -a LOG.p
+[ -r ./${t}/${t}.lsm ]||${cp} -f ./${t}/d/${t}.lsm ./${t}.lsm
+
+${MV} ./${t} ./${t}-${r}
+(
+	cd ./${t}-${r}
+	${MK} doc
+)
+find ./${t}-${r} -name \*CVS -type d -print|while read i;do find $i -print;done>./xtar
+find ./${t}-${r}/i -name sc\* -print>>./xtar
+${TAR} ../${a} --no-anchored --exclude-from=./xtar ./${t}-${r} 2>&1|tee -a LOG.p
+
+# forth dirs
+cd ..
+
+${md} 		./${t}/d 2>/dev/null||:
+${cg} ${fgroup} ./${t}/d 2>/dev/null||:
+[ -d /archive/f ]&&ln -s /archive/f ./RCH 2>/dev/null||${md} ./RCH 2>/dev/null||:
+
+( cd ./${t};make-f4s doc; )
+
+###echo "latest kernel ${VERSION}.${PATCHLEVEL}.${SUBLEVEL}${EXTRAVERSION} - $(date +%Y-%m-%d)"|${c} -monochrome -negate -size 320x30 -font lucida -trim text:- /hpg5/${f}.jpg
+###${c} -trim /hpg5/${f}.jpg /hpg5/up-ib/${f}.version.jpg                                                                                
+
+# <convert> in original-version verwenden! "KDE3" versaut - nicht nur - die image-magick-programme!!!
+# z.b. diese 'fehlermeldung' ist der reine bloedsinn (i.e. irrelevant):
+#	convert: Unable to open file () [No such file or directory].
+
+#echo -e " ${a} # $(date +%Y-%m-%d)\n\n" > ${d}/${t}.version.txt;wait
+#${CV} -monochrome -negate -size 320x30 -font lucida -trim text: ${d}/${t}.version.txt ${d}/${t}.version.jpg
+#wait
+#${SU} ${cp} ${d}/${t}.version.jpg ${d}/d/${t}.version.jpg
+#${SU} ${cp} ${d}/${t}.version.txt ${d}/d/${t}.version		
+
+echo -e " ${a} #  $(date +%Y-%m-%d)\n\n"|${CV} -monochrome -negate -size 320x30 -font lucida -trim text:- ${d}/${t}.version.jpg
+${CV} -trim ${d}/${t}.version.jpg	${d}/d/${t}.version.jpg
+${CV} -trim ${d}/${t}.version.jpg	${d}/d/${t}.version
+
+${cg} -R ${fgroup} ${d} 2>/dev/null||:
+
+# <gzip ${1}/${2} /hpg5/${2}.gz> oder mit ${3} != "" <gzip ${1}/${2} /hpg5/${3}.gz>; und dasselbe nach /hpg5/up-ib/
+gz () {
+    local o
+    o=${2};[ -z "${3}" ]||o=${3}
+    ${SU} ${gz} ${1}/${2} > 		/hpg5/up-ib/${o}.gz		2>/dev/null||:
+    ${SU} ${gz} ${1}/${2} > 		/hpg5/${o}.gz			2>/dev/null||:
+}
+
+${CM} a+w ./${t}/d/changelog 						2>/dev/null||:
+${gz} ./${t}/d/changelog > ./${t}-changes.txt.gz			2>/dev/null||:
+[ -d /hpg5 ]&&{
+    ${CG} -R ${fgroup} 			/hpg5/				2>/dev/null||:
+    ${CM} -R o+r,ug+wX,o-wX 		/hpg5/				2>/dev/null||:
+    ${CV} -trim ${d}/${t}.version.jpg	/hpg5/${t}.version.jpg
+    ${CV} -trim ${d}/${t}.version.jpg	/hpg5/up-ib/${t}.version.jpg
+    ${CP}       ${d}/${t}.version.txt	/hpg5/${t}.version		2>/dev/null||:
+    ${SU} ${cp} ${d}/${t}.version.txt	/hpg5/up-ib/${t}.version	2>/dev/null||:
+    ${CP} ${a}				/hpg5/ 				2>/dev/null||:
+    ${SU} ${cp} ${a}			/hpg5/up-ib/${t}.src.tar.bz2 	2>/dev/null||:
+    gz ./${t}/f f4ans.scr
+    gz ./${t}/f f4e.scr
+    gz ./${t}/f f4f.scr
+    gz ./${t}/f figed.scr
+    gz ./${t}/f f4m.scr
+    gz ./${t}/f f4o.scr
+    gz ./${t}/f f4p.scr
+    gz ./${t}/f f4x.scr
+    gz ./${t}/d glossary  ${t}gls
+    gz ./${t}/d changelog ${t}-changes.txt
+    ${CG} -R ${fgroup} /hpg5/ 2>/dev/null||:
+    ${CM} -R o+r,ug+wX,o-wX /hpg5/ 2>/dev/null||:
+}
+[ -d "./RCH" -a -x "./RCH" ]&&${cp} ${a} ./RCH/||:
+
+echo "${a}, ${p} copied to '"$(pwd)"' ok."
+}
+
+fu
+
+# ----------------------------------------------
+# pc <eof>

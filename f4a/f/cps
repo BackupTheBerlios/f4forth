@@ -1,0 +1,11 @@
+#! /bin/sh 
+# copy F4 screen-files from source ./f to /usr/local/lib/f4a/
+# either, all files if $1="a" or, single file(s) by $@=name(s)
+
+f=${@}
+[ "${1}" = "a" ]&&f=$(find . \( -name \*scr -o -name \*f4 \) -print)
+
+cp ${f} /usr/local/lib/f4a/
+chown -R hp  /usr/local/lib/f4a||:
+chgrp -R src /usr/local/lib/f4a||:
+chmod -R a+rX,ug+w /usr/local/lib/f4a||:

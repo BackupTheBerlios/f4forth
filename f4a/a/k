@@ -1,0 +1,18 @@
+#!/bin/sh
+# for lib4th/test4th/fig4th/f4, 6/2003 by h-peter recktenwald <l4@lxhp.in-berlin.de>
+# emergency kill all lib4th jobs
+
+[ -n "${1}" ]&&{ t="${1}";shift; }||t=0
+[ -n "${1}" ]&&{ j="${1}";shift; }||j=''
+LO=/usr/sbin/lsof
+
+[ -n "${j}" ]&&
+{
+    echo "k T:$t J:$j"
+    sleep ${t}
+    killall -9 "${pwd}/${j}"
+}||
+{
+    for i in $(${LO}|grep "\<e4\|\<fig4th\>"|cut -d\  -f1);do [ -z "${i}" ]||killall -9 ${i};done
+}
+# k <eof>

@@ -1,0 +1,2 @@
+#! /bin/sh
+(cd /usr/local/lib;rbup);make-f4s ilib

@@ -1,0 +1,15 @@
+# Automatically added by dh_installdocs
+if [ "$1" = "configure" ]; then
+	if [ -d /usr/doc -a ! -e /usr/doc/f4a -a -d /usr/share/doc/f4a ]; then
+		ln -sf ../share/doc/f4a /usr/doc/f4a
+	fi
+fi
+# End automatically added section
+# Automatically added by dh_installdocs
+if [ "$1" = configure ] && command -v install-docs >/dev/null 2>&1; then
+	install-docs -i /usr/share/doc-base/f4a
+fi
+# End automatically added section
+# Automatically added by dh_installmenu
+if [ "$1" = "configure" -a -x /usr/bin/update-menus ]; then update-menus ; fi
+# End automatically added section

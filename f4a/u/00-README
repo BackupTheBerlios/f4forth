@@ -1,0 +1,8 @@
+# contributed programs 
+
+    ./lesspipe		example w. both, <f4view> and <f4view.4th>
+
+    ./f4view
+	f4view		screen-file viewing mode for 'less',
+			source in 'C' as well as F4A Forth
+

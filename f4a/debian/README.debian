@@ -1,0 +1,36 @@
+F4 Forth fuer i586-pc-Linux/ELF
+-------------------------------
+
+F4 ist ein Forth-System. angelehnt an den traditionellem Aufbau nach dem 
+f.i.g.-Standard Version 1.0 mit fuer die Linux-Umgebung erforderlichen 
+Aenderungen. Daneben enthaelt es Ergaenzungen zum Rechnen mit als Reelle 
+Zahlen ausgefuehrten Flieszkommewerten, fuer den wahlfreien File-Zugriff, 
+'dynamische' Speicherverwaltung und 'locale' Variable, u.v.m.
+
+Copyright 2003 H-Peter Recktenwald, Berlin.
+F4 ist experimentelle Weichware ohne jegliche Gewaehrleistung.
+F4-Programm(e) und -Quellen sind zur Verwendung unter den Bedingungen 
+der dem Archiv beigefuegten QT-Lizenz freigegeben - "QT-Lizenz.txt". 
+Insbes. die patentrechtliche Verwertung behaelt sich der Autor ohne 
+Einschraenkung vor.
+
+
+
+F4 Forth for i586-pc-Linux/ELF
+-------------------------------
+
+F4 is a traditional style (f.i.g. 1.0) implementation of the Forth 
+computer langugage and programming environment w.o. the operating 
+systems features which the Linux host supplies. It provides the 
+complete word set and extensions for random file access, double 
+integer arithmetics, multiple cells' manipulation words, and other 
+extensions which are described in the glossary.
+
+Copyright 2003 H-Peter Recktenwald, Berlin.
+F4 is experimental software without warranty.
+
+Pse, read "QT-lizenz.txt" for Copyright an Licensing information or, 
+the rsp. english translation, "QT-license.txt".
+
+h-peter recktenwald, <f4@lxhp.in-berlin.de>, Mon Jun 23 06:22:33 GMT 2003
+-- eof

@@ -1,0 +1,343 @@
+#! /bin/sh
+# F4,F4A Copyright (C) 2003 by h-peter recktenwald <f4@lxhp.in-berlin.de>
+# unistd-na, f4s hp'03; build AS compliant syscalls/fcntl ref include-files
+# unistd-as, by <ln -s unistd-na unistd-as>
+#			build AS compliant syscalls/fcntl ref include-files
+# ############################################################################# #
+#
+# unistd-{na,as} [ path_to_linux_kernel_source ]
+#
+# generated lists (customize filenames, below):
+#
+# 1) file ${n}, syscall names & numbers %assign-ments
+#	%macro sys_ %{1}		; cpl syscall by name (w.o. __NR_ pfx)
+#	%assign maxerr 0xfffff001	; error code range -4096 < errno < 0
+#	%assign max_syscalls ${c}	; top of syscall no-s
+#	%assign __NR_<..name..>		; syscall numeric defns by name
+#
+# 2) file ${f}, %assign-ments
+#	%assign ..<item>.. value	; fcntl constants
+#
+# 3) ${d}, data assembly file
+#	%assign max_syscalls ${c}
+#		dd max_syscalls		; 4-aligned
+#		dd (syscalref.e-syscalref)
+#		dd 0			; for num & stg storage consistency
+#	syscalref:			; label
+#					; repetitive data blocks follow:
+#		dw <syscall-no.>	; 16bit syscall number
+#		db len,"..name..",0	; asciz name w/ leading countbyte
+#					; count may be omitted -re below-
+#	syscalref.e:
+#		dd 0			; list terminator, zero num & stg
+#
+# 4) ${a} w/ the repetitive blocks, only
+#		dw <syscall-no.>	; 16bit syscall number
+#		db len,"..name..",0	; asciz name w/ leading countbyte
+#
+# datafile generated w/o non-numeric, alias-ed refs to syscalls numbers;
+# to including, out-comment the line below "# syscalls by alias, ..."
+#
+# the list structure set up to supporting different searching methods,
+# customizing to the particular requirements could save a few bytes...
+# search w/ countbyte inclusive is fastest, requires no additional checks 
+# and can start w. a <dword> because no name shorter than 3 chars.
+#
+# environment vari, used if set, ${1} w/ predence over $LXSRC
+#	LXSRC, LSUST, LXVER, LXPGS, FCNTL, IOCTL, MMAN, TMIOS, TMBIT, TRMDS, TRMSZ
+#
+# ############################################################################# #
+
+# eliminate any possibly predefined functions
+unset a b c d f h i j k l lx m n o p s td tm tn u v x y
+unset al st df pf dl dd dw db sg si ss oa cs mb ma me
+
+# system utils used:
+#	basename, cat, cut, dirname, grep, rm, sort
+
+# main path to host system source
+[ -n "${1}" ]&&lx=${1}||{ [ -n "${LXSRC}" ]&&lx=${LXSRC}||lx="/usr/src/linux"; }
+t=$(pwd);			# this dir
+t=${t%/*};			# $t: l4 main dir
+
+# ############################################################################# #
+# customize:
+
+# <cb="any non-empty value"> for counted name strings, else generate just asciz
+cb="with countbyte"
+
+# include and sources sub-dirs:
+[ "${t}" != "${t/lib4th/}" ]&&{ si=inc/;ss=src/; }||{
+    si=i/;			# programs' include sub-dir
+    ss=s/;			# programs' source sub-dir
+}
+
+# main directory
+[ -z "$(pwd|grep "lib4th")" ]||cb=;# $cb: no count-byte for lib4th
+
+# destn filenames, includes
+d=./scdata.inc;			# data asm of syscall numbers & name strings
+n=./scdefs.inc;			# %assign-ed syscall no. to names vari defn's
+f=./scfctl.inc;			# fcntl selectors, modifiers
+a=./scdasm.inc;			# short ${d}, num & stg only
+u=/l4lxsrc.inc
+r=${t}/${ss}${u};		# filenames of linux data sources
+[ -r ${r} ]||r=
+u=.${u}
+
+# for <maxerr>
+toperrno='0xfffff001';		# unsigned -4095, error code is -4096 < errno < 0
+
+# text praefix for syscalls no. definitions in sourcefile
+m=__NR_
+
+# syscalls definition source file(s)
+[ "$(uname)" = "Linux" ]&&{
+# Linux source:
+	[ -n "${LXUST}" ]||LXUST=/include/asm-i386/unistd.h
+# kernel version file, e.g. linux: <version.h> expected in dir <../linux>
+# $v for output files will be set to "unknown" if version not found
+	[ -n "${LXVER}" ]||LXVER=/include/linux/version.h
+	[ -n "${LXPGS}" ]||LXPGS=/include/asm-i386/page.h;
+};#||{ ..other..  }||{ ..OS-s may follow.. }
+# syscall files:
+#	Linux:		include/asm/unistd.h
+#	NetBSD,OpenBSD: ..somepath../sys/syscall.h
+#	AtheOS,BeOS:	-?-
+
+# path's to files w/
+k=${lx}${LXVER};		# kernel version
+p=${lx}${LXPGS};		# source of PAGE_SIZE &c
+l=${lx}${LXUST};		# host's syscalls defns
+
+# temps
+tm=./m;				# collecting numbers, for syscalls top no.
+td=./d;				# inclusion asm data
+tn=./n;				# vari defn-s
+tv=./v;				# aux. bash vari for aliased syscalls
+/bin/rm -f ${td} ${tm} ${tn} ${tv}
+
+# ----------------------------------------------------------------------------- #
+# OS specific (e.g. i386-pc-Linux 2.2.19,2.4.18), to generating
+#	syscalls and fcntl, ioctl, mmap control data from actual Linux source
+# ----------------------------------------------------------------------------- #
+# Linux:
+
+# this script can't (yet?) translate a "C" structure, thus:
+# re include/asm/term{io,bit}s.h
+#	disps into struct termios expected w/ asmutils
+#	if missing, un-comment TRMDS and TRMSZ definitions, below, and verify!
+
+# ############################################################################# #
+
+# store host data source files to lib4th for 4th access
+[ -n "${FCNTL}" ]||FCNTL="${lx}/include/asm-i386/fcntl.h"
+# ioctl codes
+[ -n "${IOCTL}" ]||IOCTL="${lx}/include/asm-i386/ioctls.h"
+# terminal control
+[ -n "${TMIOS}" ]||TMIOS="${lx}/include/asm-i386/termios.h"
+[ -n "${TMBIT}" ]||TMBIT="${lx}/include/asm-i386/termbits.h"
+# memory mapping
+[ -n "${MMAN}" ]||MMAN="${lx}/include/asm-i386/mman.h"
+[ -n "${MMANL}" ]||MMANL="${lx}/include/linux/mman.h"
+
+# summary, collecting defn-s from header-files
+# hd=\
+# "${lx}${FCNTL}
+# ${lx}${IOCTL}
+# ${lx}${TMIOS}
+# ${lx}${TMBIT}
+# ${lx}${MMAN}
+# ${lx}${MMANL}"
+# summary, collecting defn-s from header-files
+hd="${FCNTL}
+${IOCTL}
+${TMIOS}
+${TMBIT}
+${MMAN}
+${MMANL}"
+
+x=$(basename ${0})
+[ "${x##*-}" = "as" ]&&{
+    al='.align 4,0';	# "align" pseudo op
+    st='.set';		# assign value to variable
+    sl=',';		# assignment items delimiter
+    df='#define';	# long stg cons
+    pf='#'		# ?define, 1st char
+    dl=' ';		# assignment items delimiter
+    dd='.long';		# asm	32bit data
+    dw='.word';		#	16bit
+    db='.byte';		#	8bit
+    sg='.ascii';	#	character stg
+    oa='';		# octal numbers affix
+    cs='// ';		# comment
+# system call macro, in data-file
+    ma='.macro sys_ r0=eax,r1=ebx,r2=ecx,r3=edx,r4=esi,r5=edi,r6=ebp'
+# end
+    me='.endm'
+# body - (G)AS(P) cannot distinguish numeric and other args e.g, for the shorter <push imed;pop reg>
+#    mb=".ifc \\\r0,eax\n.else;.ifc \\\r0,%eax\n.else\n\tmov \$${m}\\\r0,eax\n.endif;.endif\n\tint \$0x80"
+# f4:
+    mb=".ifc \\\r0,eax\n.else;.ifc \\\r0,%eax\n.else\n\
+    .ifgt (${m}\\\r0-127)\nmovl \$${m}\\\r0,eax\n\
+    .else\n\tpushl \$${m}\\\r0\n\tpopl eax\n.endif;.endif;.endif\n\tint \$0x80"
+#example w/ args:
+#    sc=".ifc \\r0,eax\n.elifc \\r0,%eax\n.else\nmovl \\r0,eax\n.endif\nint 0x80"
+}||{
+    al='align 4,db 0'
+    st='%assign'
+    sl='	';	# assignment items delimiter
+    df='%define';	# cannot '%assign' long stg cons - for output to ${f} -
+    pf='%'
+    dl='	'
+    dd='dd'
+    dw='dw'
+    db='db'
+    sg='db'
+    oa='q'
+    cs='; '
+# may (probably) be modified to optionally assembling <push imed;pop reg> w. '%ifnum ${m}':
+#    mb="%ifnidni %{1},eax\n\tmov eax,${m}%{1}\n%endif\n\tint 0x80"
+    mb="%ifnidni %{1},eax\n%ifnum %{1}\n\tpush ${m}%{1}\n\tpop eax\n%else\n\tmov eax,${m}%{1}\n%endif\n%endif\n\tint 0x80"
+    ma='%macro sys_ 1.nolist eax'
+    me='%endm'
+}
+# syscall by:
+#	AtheOS,Linux:	int 0x80
+#	NetBSD,OpenBSD:	int 0x80; jnc .ok; neg eax; .ok:
+#	BeOS:		int 0x25 -uncertain-
+
+# termios structure
+[ -n "${TRMDS}" ]||TRMDS="\
+${st} termios_c_iflag${sl}0\n\
+${st} termios_c_oflag${sl}4\n\
+${st} termios_c_cflag${sl}8\n\
+${st} termios_c_lflag${sl}12\n\
+${st} termios_c_line${sl}16\n\
+${st} termios_c_cc${sl}17"
+# #	size of <termios> structure
+TRMSZ="${pf}ifndef termios_size\n${st} termios_size${sl}(termios_c_cc+NCCS+3)/4*4\n${pf}endif"
+
+# -- files -- #
+[ -z "${r}" ]||{
+lxf () { local n b l;[ -z "${2}" ]&&{ n=0;b="\t";l=; }||{ n="\"${2}${3}\"";b="<$(basename ${2})>";l="\'${1}t\'"; }; [ -n "${1}" ]&&echo -e ";- ${b}\t\t\t\t\t\t\t${l}">>${r};echo -e "\n\tdb ${n}">>${r}; }
+lxl () { echo -e${1} ";-\n;-=====================================\n;-"	>>${r}; }
+
+# collecting i/o files & devices control defns to file ./i/l4xsrc.inc
+echo "; lib4th, f4a, f4s (C) 2003 hp"	> ${r}
+lxl
+echo ";- \"$(uname)\" source files"	>>${r}
+lxl
+echo -e "\n;-\n;- lxpath\t( -- p u )\t\t\t\t\t\t\tlinux\n;-\tpath to host constants sources files">>${r}
+echo -e "lxpath:GA\n\tspush\n\tmov eax,.s-Y\n\tjmp zcount\n\ta\n.s:"	>>${r}
+# add path to source files' path' list
+echo "$(dirname ${l})
+$(dirname ${k})
+$(dirname ${p})
+$(for i in ${hd};do echo $(dirname ${i});done)"\
+|sort -bdfr|uniq|while read y;do [ -n "${y}" ]||continue;lxf $(basename ${y}) ${y} ":";done
+# add path+file to source files' list
+lxf lsrp ${lx};		# path to src
+lxf e;	 		# list terminator
+echo -e "\n;-\n;- lxfiles\t( -- p u )\t\t\t\t\t\t\tlinux\n;-\tcompiled host constants source files list">>${r}
+echo -e "lxfiles:GA\n\tspush\n\tmov eax,.s-Y\n\tjmp zcount\n\ta\n.s:"	>>${r}
+echo -e "${l}
+${k}
+${p}
+${hd}"|sort -bdf|uniq|while read y;do [ -n "${y}" ]||continue;x=$(basename ${y});lxf ${x} ${y};lxf e${x};done
+lxf e;			#\list 
+lxf f;	 		#/ terminator
+lxl n
+echo " l4lxsrc.inc <eof>"						>>${r}
+}
+
+# page_shift from kernel source (dft = 12, i.e. PAGE_SIZE := 4K)
+[ -r ${p} ]&&v="$(grep '^#define' ${p}|grep 'PAGE_SHIFT')"
+j=0
+[ -n "${v}" ]&&{
+    for i in ${v}
+    do
+	j=$((${j}+1))
+	[ "${j}" != "3" ]||{ v=$(echo ${i}|sed -e "s/\"//g;s/\./0/g");break; }
+    done
+}
+[ -n "${v}" ]||v='12';#		default setting
+p=${v}
+v='0.0.00'
+# kernel version, else <0.0.00>
+[ -r ${k} ]&&{ read v v v<${k};v=0$(echo ${v}|sed -e "s/\"//g;s/\./0/g"); }
+
+grep "${m}" ${l}|grep "^#define"|cut -d\  -f2-|cut -d/ -f1|sed -e "s/${m}//"|while read i j
+do [ "$((${j}))" -eq 0 ]&&j=$((${i}))||declare __NR_${i}=$((${j}));echo "${i}=$((${j}))";done>>${tv}
+source ${tv}
+
+tifs=${IFS};IFS="=${IFS}"
+while read i j
+do
+	[ "$((${j}))" -eq 0 ]&&j=$((${i}))
+	echo "${st} ${m}${i}${sl}${j}">>${tn}
+# syscalls by alias, else comment the next line
+	[ "${j}" = "$((${j}))" ]&&echo ${j}>>${tm}||continue
+	echo "	${dw} ${j}">>${td}
+	[ -z "${cb}" ]||echo "	${db} ${#i}">>${td}
+	echo -e "	${sg} \"${i}\"\n	${db} 0">>${td}
+done<${tv}
+IFS=${tifs}
+
+# top syscall code
+for i in $(sort -nr ${tm});do c=${i};break;done
+
+# common to all supported hosts' syscalls
+[ -d "${t}/${si}asmutils/au" ]&&{
+[ -z "${A4SI}" -o -z "${OSF}" ]||{
+echo "; ${A4SI}">${t}/${si}a4c.inc;o=0;\
+cat ${t}/${si}asmutils/au/${A4SI}|grep "^%assign *SYS_"|while read a b c d;\
+do
+    [ -z "$c" ]||
+	{ [ $((${o})) -gt $((${c})) ]&&echo -e "\n %assign top_sycommon $o"&&break; }||
+	{
+	    for i in ${OSF};do [ "${i}" = "${A4SI}" ]||{ grep "${b}" ${t}/${si}asmutils/au/${i}>/dev/null||b=; };done
+	    [ -z "${b}" ]||{ o=$c;i=${b:4};echo -e "\tdb ${#i},\"$i\",$c"; }
+	}
+done>>${t}/${si}a4c.inc
+    }
+}
+
+# assemble destn. files, $n:numeric vari, $d:data assembly
+pgs () { echo -e "${st} page_shift${sl}${p}\n${st} maxerr${sl}${toperrno}"; }
+
+echo "${cs} ${n} : kernel ${v}, syscall numbers assigned to their names">${n}
+# F4: def'd in <fig4th.inc>
+#echo -e "\n${ma}\n${mb}\n${me}">>${n}
+echo -e "\n${pf}define kernel_vers \"${v}\"">>${n}
+pgs >>${n}
+echo -e "${st} max_syscalls${sl}${c}\n">>${n}
+echo "${cs} ${a} : kernel ${v}, syscall numbers and names assembly">${a}
+echo "${cs} ${d} : kernel ${v}, syscall numbers and names assembly">${d}
+pgs >>${a}
+pgs >>${d}
+echo -e "\n${st} max_syscalls${sl}${c}\n\n\t${al}\n\t${dd} ${c},syscalref.e-syscalref,0\nsyscalref:">>${d}
+cat ${tn}>>${n}
+cat ${td}>>${d}
+cat ${td}>>${a}
+echo -e "\n${cs} ${n} <eof>">>${n}
+echo -e "syscalref.e:\n\t${dd} 0\n\n${cs} ${d} <eof>">>${d}
+echo -e "\n${cs} ${a} <eof>">>${a}
+
+# fcntl-s
+unset a b c d
+echo -e "${cs} ${f} : kernel ${v}, fcntl cons\n\n">${f}
+[ -z "${TRMDS}" ]||echo -e ${TRMDS}>>${f}
+cat ${hd}|cut -d/ -f1|grep '#define'|grep -v '[0-9A-Za-z]\(\ \)*('|while read a b c d
+do [ -z "${c}" ]||{ [ "${c:0:1}" == "0" -a "${c:1:1}" != "x" ]&&c=${c}${oa};[ "${#c}" -gt 20 ]&&echo "${df} ${b}${dl}${c}">>${f}||echo "${st} ${b}${sl}${c}">>${f}; };done
+[ -z "${TRMSZ}" ]||echo -e ${TRMSZ}>>${f}
+echo -e "\n${cs} ${f} <eof>">>${f}
+
+# clr temps
+/bin/rm -f ${td} ${tm} ${tn} ${tv}
+
+for i in ${d} ${n} ${f} ${a} ${r} 
+do chmod ug+rw ${i}||:;done
+
+# ############################################################################# #
+# unistd-na <eof>

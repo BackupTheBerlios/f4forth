@@ -1,0 +1,1226 @@
+
+' \ is -->
+' drop is load
+: ;s state@ if compile exit else [_] \\ endif ; immediate
+
+.(  {-->}, {load} and {;s} re-defined - modify appopriately ) cr
+.(  ======================================================= ) cr
+
+( scr#0 )
+
+provided an installation to the standard F4 library location as
+by <make install> the entire screen-file as well as any single
+word appearing in the rsp. index (top) line can be compiled:
+
+    { " /usr/local/lib/f4a/f4x.scr" USING 6 LOAD }
+
+or,
+    { LLOAD forthword }
+
+which compiles the rsp. 'forthword' with the least possible
+overhead of probably required supporting words. if F4 compiled
+w.o. the "lload" extension, for instance, start with
+    { 0 " LLOAD" L-LOAD DROP ' LLOAD NFA FENCE ! }
+with 'lload' being safe against 'forget', 'empty' and, 'cold'.
+( scr#1 )
+( ================ < F4 hi-level extensions > ================ )
+                    6 b/scr * 1+ blk ! 0 in !
+
+                      Sa 2002-09-14 14:31
+
+                     f4a@lxhp.in-berlin.de
+
+( scr#2 )
+( ================ < F4 hi-level extensions > ================ )
+
+( scr#3 )
+( ================ < F4 hi-level extensions > ================ )
+
+( scr#4 )
+(  ERROR MESSAGES  ) -->
+EMPTY STACK
+DICTIONARY FULL
+HAS INCORRECT ADDRESS MODE
+ISN'T UNIQUE
+
+DISC RANGE ?
+FULL STACK
+DISC ERROR !
+
+F4                                                   SEP 2, 2002
+( scr#5 )
+(  ERROR MESSAGES  ) -->
+COMPILATION ONLY, USE IN DEFINITION
+EXECUTION ONLY
+CONDITIONALS NOT PAIRED
+DEFINITION NOT FINISHED
+IN PROTECTED DICTIONARY
+USE ONLY WHEN LOADING
+OFF CURRENT EDITING SCREEN
+DECLARE VOCABULARY
+
+F4                                                   SEP 2, 2002
+( scr#6 )
+( ================ < F4 hi-level extensions > ================ )
+forth definitions decimal
+
+    1 warning !         ( screenfile text messages   )
+    0 lword !           ( prevent "lword" evaluation )
+
+    10 load 1 warning ! ;S
+
+( load extension code, test "thru", "-->" and ";S" )
+    9 constant end-thru ( "thru" )
+    7 load              ( test parameter passing w. "load" )
+    end-thru thru
+    1 warning !         ( messages from dr0-file )
+    ;S                  ( done )
+
+( scr#7 )
+( ==== -test- ==== : thru   )
+                               found? end-thru? if-true -->
+                           lword @ if-true -l ?? if-true ;s
+hidden definitions
+: [et] forth lword @ -exit
+  scr @ end-thru < if rdrop exit endif [_] --> ;
+
+root definitions hidden
+' [et] defer end-thru?
+                                                        -->
+
+( scr#8 )
+( ==== -test- ==== : thru   )       found? thru if-true -->
+
+\ ?thru to testing "forget", instead of "found?"
+hidden definitions
+: ?thru      forth     ( check whether 'thru' already defined )
+  if 2drop rdrop endif ( exit this screen if 'thru' found     )
+  " ?thru" sforget ;   ( in either case, forget testing word  )
+-find thru ?thru
+
+forth definitions root definitions forth
+: thru                  ( n1 n2 -- )    ( load scr n1 till n2 )
+  1+ 2dup = if 2drop ;s endif swap      ( n2 inclusive        )
+  do i load dr? chan ch-rnum 0= -leave loop ; ( 'leave' at eof)
+
+                                                        -->
+
+( scr#9 )
+( test whether screen-file loading may pass parameters - ok   )
+
+forth definitions               blk @ b/scr / 1+
+
+                                                        ;S
+
+( scr#10 )
+( ==== short "where" ==== : ??                                )
+root definitions
+
+\ short aequivalent to editor voc. "where"
+: ?? forth b/scr /mod "S emit . "B emit . "C emit . ;
+
+                         found? end-thru? if-true end-thru?
+                           lword @ if-true -l ?? if-true ;s
+                                                        -->
+
+( scr#11 )
+( == initial search order == : 2nd-voc                        )
+
+        2nd-voc linux hidden
+        2nd-voc forth linux
+        2nd-voc editor forth
+        2nd-voc root  forth
+( editor search order: editor forth linux hidden root         )
+
+      found? end-thru? if-true lword @ 0= if-true end-thru?
+      lword @ if-true -l 2nd-voc if-true                 ;s
+                                                        -->
+
+( scr#12 )
+( == util == : marker   )            forth definitions decimal
+                            lword @ if-true if-found marker ;s
+: marker blk 2@ 2>r name sfind      ( forget re-def'd marker  )
+  if drop dup @ [ here rot rot here ] literal -
+  if drop else cfa execute endif endif 2r> blk 2!
+  <builds current @ , context @ , base@ ,       ( build new   )
+  latest count $1f and here over 2+ allot
+  2dup c! 2dup + 0 swap c! 1+ swap cmove
+  does> [ here swap 4+ ! ]             ( patch for 'domarker' )
+  @+ current ! @+ context ! @+ base ! sforget ;
+                                    lword @ 0= if-true -->
+                                                        ;s
+( use: { marker markername }                                  )
+( executing a 'marker' or, re-defining restores current and   )
+( context vocabularies and base figure, then forgets itself   )
+( if re-defining, an equally named marker set up, afterwards  )
+( scr#13 )
+( == per line/block comment == \ \\ [\] [\\]     ( F4 kernel  )
+                                                        -->
+( ----------------------------------------------------------- )
+( use "-->" instead of "\\" to continue at next screen        )
+( or, ";S"  to terminate "load"ing                            )
+( ----------------------------------------------------------- )
+
+hidden definitions forth
+: [\]     forth
+  blk@ if c/l in @ over mod - else 0in! -1 endif in +! ;
+: [\\] blk@ if b/scr blk@ over mod - blk +! ;s endif [\] ;
+
+forth definitions
+' [\] defer   \                                 immediate
+' [\\] defer \\                                 immediate
+
+( scr#14 )
+( == 'optimization' control == : do-opt : no-opt : opt?       )
+root definitions
+\
+if-nfound do-opt -l do-opt if-true : do-opt -1 cmo ! ; immediate
+if-nfound no-opt -l no-opt if-true : no-opt  0 cmo ! ; immediate
+
+if-found opt? 1 +continue
+-l opt? if-true : opt? cmc @ cmo @ and ; immediate
+                                   lword @ 0= if-true -->
+                                                       ;s
+\ no-opt        ( -- )          (i)     root
+\ do-opt        ( -- )          (i)     root
+\   dis/enable conditional branches & end-recursion modifying
+\ opt?          ( -- flg )      (i)     root
+\   flag whether 'optimizing' enabled, 0 disabled, else =/= 0
+
+( scr#15 )
+( == conditional cpl ==  : if-found : if-nfound ( F4 kernel   )
+root definitions forth
+                lword @ if-true found? if-nfound if-true ;s
+           found? if-nfound found? if-found and if-true -->
+
+: if-found  [_] found?    [_] if-true ;         immediate
+: if-nfound [_] found? 0= [_] if-true ;         immediate
+
+                                     lword @ 0= if-true -->
+                                                         ;s
+
+( scr#16 )
+( == short 'l-load' == : lload                                )
+                          if-found lload lword @ if-true ;s
+                                         if-found lload -->
+root definitions forth
+: lload 0 name l-load drop ;
+                        lword @ if-true -l lload if-true ;s
+                                                        -->
+
+( scr#17 )
+( == compat : <nl> : \e                                       )
+forth definitions decimal
+        lword @ if-true found? \e found? <nl> and if-true ;s
+
+10      cons        <nl>            ( new-line code           )
+27      constant    \e              ( ascii <esc>ape code     )
+
+                                      lword @ 0= if-true -->
+                                                          ;s
+
+( scr#18 )
+( == compat == : pad-size : cdt-size : page-size : stat-size  )
+forth definitions decimal if-found page-size 2 +continue
+lword @ if-true -l page-size 0= if-true 1 +continue
+   4K            constant page-size ( Linux constant, verify! )
+lword @ if-true -l pad-size  0= if-true 2 +continue
+if-found pad-size 1 +continue
+   pad here -    constant pad-size  ( disp from 'here' to pad )
+lword @ if-true -l cdt-size  0= if-true 2 +continue
+if-found cdt-size 1 +continue
+   1 cdt 0 cdt - constant cdt-size  ( channel defn table, ea. )
+lword @ if-true -l stat-size 0= if-true 3 +continue
+if-found stat-size 2 +continue
+   pad 200 -1 fill pad 0 fstat 200 -1 rskip sdrop minus 201 +
+                 constant stat-size ( 'fstat' system call     )
+                                lword @ 0= if-true -->
+                                                    ;s
+( scr#19 )
+( == compat == : |voc               ( word-list terminal name )
+forth definitions decimal
+
+if-found |voc 1 +continue
+vocabulary xx xx context @ @ w@ forget xx constant |voc
+
+                                     lword @ 0= if-true -->
+                                         -l |voc if-true ;s
+                                                        -->
+
+( scr#20 )
+( == compat == : cells : chars                                )
+forth definitions decimal
+         lword @ if-true -l cells 0= if-true 2 +continue
+                              if-found cells 1 +continue
+: cells [ here 0  , here - dup allot abs ] literal * ;
+
+         lword @ if-true -l chars 0= if-true 2 +continue
+                              if-found chars 1 +continue
+: chars [ here 0 c, here - dup allot abs ] literal * ;
+
+                                     lword @ 0= if-true -->
+                            -l cells -l chars or if-true ;s
+                                                        -->
+
+( scr#21 )
+( == compat == : #tib                                         )
+forth definitions decimal
+
+if-nfound #tib          : #tib tib @ zcount sdrop ;
+
+                                     lword @ 0= if-true -->
+                                         -l #tib if-true ;s
+                                                        -->
+
+( scr#22 )
+( == compat == : also : previous  )                     -->
+
+root definitions decimal
+
+: also ;
+: previous n.i. :
+
+( scr#23 )
+( == util == : imed? )
+forth definitions               if-found imed? 3 +continue
+
+: imed? nfa c@  ( pfa -- imed-flg|0 )
+  [ latest c@ immediate latest c@ xor ] literal and ; immediate
+
+                                    lword @ 0= if-true -->
+                                    -l imed? if-true    ;s
+                                                       -->
+
+( scr#24 )
+( == util == : [s]                                            )
+root definitions
+
+: [s] base@ >r hex .s r> base ! ;
+                                                immediate
+
+                                     lword @ 0= if-true -->
+                                                         ;s
+
+( scr#25 )
+( == numeric output == : ud.r : ud. : udb.r : ub.r : ub.      )
+
+found? [ud] if-true 5 +continue
+: [ud] >rr      ( dn sgn +/~field -- )
+  <# 0< 0= if bl hold endif >rr if dabs endif #s
+  r> if ascii - hold endif r r> 0<
+  if not endif pad hld @ - - 0max
+  -dup if 0 do bl hold loop endif #> type ;
+
+if-nfound ud.r  : ud.r 0 swap [ud] ;        ( dn r --  )
+if-nfound ud.   : ud.  0 ud.r ;             ( dn   --  )
+if-nfound udb.r : udb.r base@ >r base ! ud.r r> base ! ;
+if-nfound ub.r  : ub.r 0 rot rot udb.r ;    ( n r b -- )
+if-nfound ub.   : ub.  0 swap ub.r ;        ( n b  --  )
+    ' [ud] (gb) !                   lword @ 0= if-true -->
+                                                        ;s
+( scr#26 )
+( == util == : [f]                                            )
+root definitions
+
+: [f]          ( ccc( -- ( get word ccc from forth vocabulary )
+  context @ >r [_] forth -find r> context !
+  if state@ < if cfa , else cfa execute endif endif ; immediate
+
+                                     lword @ 0= if-true -->
+                                                         ;s
+
+\ in either 'state', use: { ..words.. [f] forthword ..words.. }
+\ wherein 'forthword' would 1st be searched for in 'forth' voc.
+\ but, search order still active. found word will then be cpl'd
+\ or executed, dependent on the actual 'state'.
+\ re "vfind" for restricted to a single vocabulary search  -->
+
+( scr#27 )
+( == util == : envp                                           )
+
+if-nfound envp -8 +origin constant envp
+
+                                     lword @ 0= if-true -->
+
+( scr#28 )
+( == util == : envstg                                         )
+
+                  if-nfound envp 0 " envp" l-load drop
+                                -1 cmo ! ( do-opt )
+: envstg envp @ swap 1- dup ( n -- a u | 0 ( env-vari by num  )
+  begin sdrop swap @+ dup
+  while rot 1- dup 0<
+  until abs minus and sdrop
+  dup 0dup 0= -exit zcount ;
+
+                                lword @ 0= if-true -->
+                                  -l envstg if-true ;s
+                                                   -->
+\ ret string w. name and content of env-vari by number
+
+( scr#29 )
+( == util == : getenv                                         )
+
+                  if-nfound envp 0 " envp" l-load drop
+
+: getenv envp @         ( a1 -- a2 u | 0 ( env-vari by name )
+  begin @+ dup
+   if zcount 2dup "= scan sdrop - 3 pick count s=
+   else 2drop 0= 0. endif
+  0= until -dup 0= -exit
+  4- @ sdrop zcount "= scan 1/string ;
+                                lword @ 0= if-true -->
+
+\ ret string w. content of env vari by name
+
+( scr#30 )
+( == util == : vfind                                          )
+root definitions
+
+: vfind     ( vvv www( -- pfa byte 1 | 0   ( find word in voc )
+  [_] ' +@ pfa lfa @ name (find) ;
+\ use: { vfind forth here }
+
+                                lword @ 0= if-true -->
+                                                    ;s
+
+: [vf] +@ pfa lfa @ swap (find) ; ( name pfa -- pfa byte 1 | 0)
+\ use: { " here" ' forth [vf] }
+
+: 2nd-voc@ +@ pfa @ ;   ( pfa -- vlfa ( 2nd-ary search voc lfa)
+\ use: ' forth 2nd-voc@ (     -- voc-head lfa of 2nd-ary voc  )
+
+( scr#31 )
+( == util == voc-nfa from vlfa == : v<nfa : words             )
+forth definitions decimal
+lword @ if-true -->
+found? v<nfa if-true --> ( in F4 kernel )
+
+: v<nfa     ( a -- pfa )    ( a = voc def-block voc-link posn )
+  [ ' here dup cfa - ] literal + nfa last @
+  begin 2dup pfa +@ - while t<nfa swap drop dup 0= until sdrop ;
+
+                                        -->
+
+: words last @              ( short, most simple substitute   )
+  begin dup id. t<nfa swap drop -dup 0= until cr ;
+
+( scr#32 )
+( == util == : words                                          )
+forth definitions
+                    if-nfound |voc 0 " |voc" l-load drop
+: words                         ( -- (display all vocabularies)
+  max-xy drop 8- voc-link
+  begin @ dup
+  while cr dup dup v<nfa id. cr 4- @ 0 >r
+   enter begin
+    dup c@ $1f and 2+ r> + dup 4 pick > if 0= cr endif >r
+    dup id. n<nfa
+   entry dup w@ |voc = over @ 0= or until rdrop drop
+  repeat 2drop cr ;
+
+                                lword @ 0= if-true -->
+
+( scr#33 )
+( == util == : vocs                                           )
+forth definitions
+
+: vocs voc-link ( -- ( disply voc-linked vocabulary names )
+  enter begin dup v<nfa id. entry @ -dup 0= until ;
+
+                                lword @ 0= if-true -->
+\
+\ "vocs", "order", "v" are slow because no direct reference from
+\ vocabulary definition blocks back to the rsp vocabulary word
+\ header exists. thus each name got to be followed through the
+\ the entire word-list till it's linkage end, to getting the
+\ defining vocabulary's def-block and then again, to finding
+\ it's name header, by comparison through all existing words.
+
+( scr#34 )
+( == util == : order : v<flg : [cv] : .voc : .vocl            )
+hidden definitions                  if-found .vocl -->
+
+8 cons+ v<flg           ( pfa -- vfa ( ptr to voc-flags )
+
+: [cv] voc-link         ( clear voc-searched flags )
+  enter begin 0 over v<flg c! entry @ -dup 0= until ;
+
+: .voc      ( vlfa -- next|0 )
+  4+ dup v<flg @ if 0= ;s endif
+  1 over v<flg c! dup v<nfa id. 4+ @ ;
+
+: .vocl [cv] ( pfa -- ) ( vocs chain by 'context'/'current' pfa
+  dup nfa id. ": emit cfa execute
+  @ begin .voc -dup 0= until cr ;
+                                        -->   \ -->
+( scr#35 )
+( == util == : order                                          )
+forth definitions           if-found order ;s
+
+: order              ( -- ( display search order; imed        )
+  ' context .vocl ' current .vocl ;     immediate
+
+if-nfound -afind     6 +continue
+( only if F4 compiled w. "afind" support: '#define _afind_ 1' )
+: v -afind           ( ccc( -- ( display defn voc, cfa )
+  0= if ." -?-" ;s endif
+  drop dup nfa dup id.
+  enter begin n<nfa entry dup w@ |voc = until
+  pfa cfa v<nfa id. cfa #16 b. ;
+
+                                lword @ 0= if-true -->
+
+( scr#36 )
+( == : abort" ==                                              )
+root definitions forth decimal
+
+: abort" state@ ( 0 -- ) ( n -- , abort w. message text; imed )
+  if
+   [_] if [_] ." [_] bye [_] endif
+  else
+   [_] " swap if print bye else drop endif
+  endif ;                               immediate
+
+                                lword @ 0= if-true -->
+
+( scr#37 )
+( == ?depth error hnd == : ?depth                             )
+forth definitions decimal
+
+: ?depth                  ( n -- | abort-3 'cond. not paired' )
+  >r depth r min r> ?pairs ;
+
+                                lword @ 0= if-true -->
+
+( scr#38 )
+( == compat, synonym 'cons' == : value                        )
+forth definitions decimal
+
+if-nfound value : value cons ;   ( alterable 'constant' )
+
+                                lword @ 0= if-true -->
+
+( scr#39 )
+( == return-stack doubles == : 2>r : 2r : 2r>  ( in F4 kernel )
+forth definitions decimal
+
+if-found 2r 3 +continue                 ( def'd in F4 kernel  )
+: 2>r compile >r compile >r ;                   immediate
+: 2r> compile r> compile r> ;                   immediate
+: 2r compile 2r> compile 2dup compile 2>r ;     immediate
+
+                                lword @ 0= if-true -->
+                                                    ;s
+
+( scr#40 )
+                                                        -->
+
+( scr#41 )
+( ==== counted string  ==== : s"            ( in F4 kernel    )
+forth definitions decimal
+
+                if-found s" lword @ 0= if-true -->
+                if-found s" -l s" if-true ;s
+
+: s" [_] " -compile count ;             immediate
+
+                                     lword @ 0= if-true -->
+                                           -l s" if-true ;s
+                                                        -->
+
+( scr#42 )
+ --> == counted & asciz string manipulation == place stg == <--
+\
+\ place         ( a1 n a2 -- )
+\       store unlimited size string at q1, len n, to mem at a2
+\ +place        ( a1 +-/n a2 -- )
+\       +n: append, -n: prepend string a1,n to string at a2
+\ c+place       ( char +-n a2 -- )
+\       a-/pre-pend |n| bytes of multi-byte char to string at a2
+\
+\ strings may either be of type 'counted stg', chars preceded by
+\ a count-byte or, any length sequence, enclosed by <nul> bytes.
+
+( scr#43 )
+( ==== string storage ==== : c>b : place                      )
+hidden definitions decimal
+
+: c>b dup 256 u< -exit 0= ; ( byte -- 0|byte )
+
+                lword @ if-true -l c>b if-true ;s
+                                                        -->
+
+\ auxilary for "place" words and modifying a string vari;
+\ determines whether a string can be stored w. leading count
+\ byte or, should be enclosed in <nul> bytes.
+
+( scr#44 )
+( ==== string storage ==== : place                            )
+forth definitions decimal
+
+: place                     ( a1 u a2 -- ( a1, a2 may overlap )
+  -dup if 0 over c! 2dup + >r 2 pick     ( a1, a2 =/= 0       )
+   if over c>b over 2>r 1+ swap move 2r> c! 0 0. endif
+   swap r> 1+ c!
+  endif 2drop ;
+                                lword @ 0= if-true -->
+                                -l place if-true ;s
+\
+\ place         ( a1 u a2 -- )
+\       store text a1 of length u1 as a counted, if u < 256, or
+\       enclosed by <nul>-chars string to address a2.
+
+( scr#45 )
+( == string concatenation == : pl> : <pl : +place : c+place   )
+hidden definitions decimal
+
+: pl>    forth                  ( a1 +n a2 -- ( append to stg )
+  2>rr scount +                      ( -- a1 n a3  R: -- n a2 )
+  2>rr swap move 0 2r> + c!          ( --          R: -- n a2 )
+  2r> dup scount swap drop rot + c>b swap c! ;
+
+                                                        -->
+
+( scr#46 )
+( ==== string concatenation ==== : <pl                        )
+hidden definitions decimal
+
+: <pl    forth                  ( a1 -n a2 -- ( prepend to stg)
+  swap abs swap 2dup
+               ( -- a1 n a2+n a2 u2+1 -- a1 n (R: a2 a2' u2   )
+  >rr r scount 2>r + r 1+ move
+  2r> >r swap >rr move                   ( -- (R: a2 u2 n     )
+  2r> + c>b r> c! ;
+
+                                                        -->
+
+( scr#47 )
+( ==== string concatenation ==== : +place                     )
+forth definitions
+
+: +place  hidden        ( a1 +/-n a2 -- ( a1, a2 may overlap  )
+  over 0< if <pl ;s endif pl> ;   ( +n append / -n prepend stg)
+
+                                     lword @ 0= if-true -->
+                                       -l +place if-true ;s
+                                                        -->
+\
+\ +place        ( a1 n a2 -- )
+\       pre-/append n bytes of text at address a1 to counted
+\       string at address a2. +n appends, -n pre-pends.
+
+( scr#48 )
+( ==== conat stg w. multi-byte char ==== : c+place            )
+forth definitions
+
+: c+place               ( c +/-n a2 --  ( n=byte-count of chr )
+  2>r sp@ 2r> +place drop ;
+
+                                     lword @ 0= if-true -->
+                                  -l c+place if-true ;s
+                                                        -->
+\
+\ c+place       ( c n a -- )
+\       pre-/append n bytes of multi-byte char c, l.s.byte 1st,
+\       to counted string at address a. +n appends, -n prepends.
+
+( scr#49 )
+( ==== initiated string variable ==== : stg                   )
+forth definitions decimal
+
+                     if-nfound place 0 " place" l-load drop
+
+: stg <builds   ( C: ccc( a u n -- ) ( X: -- a ( ptr to string)
+  over max 4+ dup , here 0 over ! swap allot place does> 4+ ;
+
+                                     lword @ 0= if-true -->
+                          lword @ if-true -l stg if-true ;s
+                                                        -->
+
+( scr#50 )
+( == concat stg == : to-stg : c+stg : +to-stg : @stg : ?stg   )
+             if-nfound abort"  0 string ' abort"' l-load drop
+hidden definitions decimal
+
+: ?stg      ( max len -- | abort )
+  > 0= abort" stg ovf " ;
+
+: @stg      ( ccc( -- a max )
+  [_] ' 4+ @+ 4- ;
+
+: stg?      ( ccc( a n -- a n a2 | abort )
+  >rr abs >r @stg over c@ r> + ?stg r> swap ;
+
+                                                        -->
+
+( scr#51 )
+( == assign/concat stg variable ==   to-stg   c+stg   +to-stg )
+forth definitions decimal
+
+: to-stg    ( ccc( a +/-u --      ( re-assign to string vari  )
+  >rr abs >r @stg r> ?stg r> swap place ;
+
+: c+stg     ( ccc( chr +/-size -- ( a/pre-pend multi-byte chr )
+  stg? c+place ;
+
+: +to-stg   ( ccc( a +/-u --      ( a/pre-pend string         )
+  stg? +place ;
+
+                                lword @ 0= if-true -->
+                                ;s
+
+( scr#52 )
+( == doc & lib path strings == : doc : figed : f4x (  unused  )
+lword @ 0= if-true --> ( brauchen wir nicht: siehe "fname" ... )
+forth definitions decimal
+
+" /glossary" count pad place
+libdir count + 1+ count + 1+
+                  count minus pad +place pad count dup stg doc
+
+" /figed.scr" count pad place
+libdir count minus pad +place pad count dup stg figed
+
+libdir count + 1+ count dup stg f4x
+
+                                ;s
+
+( scr#53 )
+( ==== type asciz-string per addr == : zprint                 )
+forth definitions decimal
+
+: zprint zcount ptype ; ( a -- ( type w. printing chars, only )
+
+                                lword @ 0= if-true -->
+                                ;s
+
+( scr#54 )
+( ==== string execution ==== : {x} : evaluate                 )
+hidden definitions decimal
+
+0     constant #x#
+(x) @ constant [x]
+
+: {x} 0 blk ! enter begin ( -- )      ( string "interpret"er )
+   -find if
+    state@ < if cfa , else cfa execute endif
+   else here number dpl @ 1+
+    if [_] dliteral else drop [_] literal endif
+   endif
+  entry ?stack in @ #x# < 0= until [x] (x) ! ;
+
+                                                        -->
+
+( scr#55 )
+( ==== string execution, cont'd ==== : evaluate               )
+forth definitions
+
+: evaluate              ( a -- .xx. )  ( xec from supplied stg)
+  tib @ >r in @ >r blk@ >r
+  scount ' #x# ! tib ! 0in! -1 blk ! {x}
+  r> blk ! r> in ! r> tib ! ;          ( => tested, ok )
+
+                                lword @ 0= if-true -->
+                                ;s
+
+( scr#56 )
+--> == local memory ==== >loc loc> :locals locals; l@ l! == <--
+\
+\ F4 local 'variables' based on unlimited size local memory
+\ allocation, by cells addressable w. 'l@' and 'l!' or, by the
+\ content of uvari s0 prior to allocation as the local memory
+\ base address - "l0" in 'local' voc.
+\ this locals implementation for simplicity doesn't provide
+\ addressing by names but, indexed by cells' positions access.
+\ e.g.
+\       1 l@ 3 l!
+\ copies the 1st local cell to the 3rd.
+
+( scr#57 )
+\ : -loc : :locals : locals; : (locals : locals) : >loc : loc>
+hidden definitions      ( prepare local de/allocation         )
+
+: -loc -dup 0=          ( +/-bytes -- cells +/-aligned sign   )
+  if rdrop exit endif
+  >rr abs 3 + -4 and r> +- >rr r abs 4/ swap r> 0< ;
+
+                                lword @ 0= if-true -->
+                                -l -loc if-true ;s
+                                                   -->
+
+( scr#58 )
+( ==== de-/allocate local memory ==== : >loc : loc>           )
+forth definitions
+
+: >loc 4* -loc 3 ?error >r         ( n -- ( alloc local cells )
+  0 do 0 depth 1- minus roll loop r> s0 +! ;
+
+: loc> 4* minus -loc 0= 3 ?error   ( n -- ( de-alloc locals   )
+  s0 +! >rr 0 do depth 1- roll loop r> ndrop ;
+
+                                lword @ 0= if-true -->
+                         -l >loc -l loc> or if-true ;s
+                                                   -->
+
+( scr#59 )
+( == check local memory availabiliy ==  use-loc               )
+forth definitions decimal
+
+: use-loc +sp drop ;            ( n -- ( assure n local cells )
+\ locals base ptr may change w. allocation beyond size of stack
+\ section less minimal dstack margin. blocks of local workspace
+\ relocation prevented by trial allocation of expectected size.
+
+                                                        -->
+
+: use-loc dup >loc loc> ;       ( n -- ( assure n local cells )
+
+( scr#60 )
+( == link local memory back ==   no-loc                       )
+forth definitions decimal
+
+: no-loc 16 (up) + @ 32 + s0 ! ;  ( init dstack from mmap bot )
+
+                                                        -->
+
+( scr#61 )
+( ==== local variables ==== : :locals : locals;               )
+forth definitions
+
+\ top local item at index 0, @tos before allocation.
+\  ( n -- )      alloc & init top +n local cells from dstack
+: :locals 4* -loc
+  3 ?error >r 0 do depth minus roll loop r> s0 +! ;
+
+\  ( n -- )      discard top n cells of local datapace
+: locals; 4* minus -loc
+  0= 3 ?error s0 +! >rr 0 do depth roll loop r> ndrop ;
+
+                                     lword @ 0= if-true -->
+                -l :locals -l locals; or if-true ;s
+                                                        -->
+
+( scr#62 )
+( ==== local variables ==== : l@ : l!                         )
+forth definitions
+
+                        ( n --x ( fetch n-th local, n=0 is 1st )
+if-nfound l@ : l@ depth + pick ;
+                        ( x n -- ( store x to n-th local )
+if-nfound l! : l! depth + 1- minus pick ;
+
+                                     lword @ 0= if-true -->
+                          -l l@ -l l! or if-true ;s
+                                                        -->
+
+( scr#63 )
+( ==== local variables ==== : (locals : locals)
+forth definitions
+
+: (locals 1+ dup :locals ; ( n -- ( init n locals from dstack )
+: locals)  0 l@  locals; ; ( - -- ( de-alloc, count from ix 0 )
+
+                                     lword @ 0= if-true -->
+                -l (locals -l locals) or if-true ;s
+                                                        -->
+
+\ top local item at index 1, @tos before allocation.
+\ size by above words stored to/fetched from posn 0.
+
+( scr#64 )
+( ==== file specific ==== : fposab : feof : fsof              )
+forth definitions
+\
+\ fposab    ( n1 ch -- n2 )
+\       set file ptr of channel ch to n1, ret previous ptr n2
+: fposab    ( n1 ch -- n2 )
+  swap over fposre >rr - fposre drop r> ;
+
+: feof      ( ch -- n )     ( fptr to eof, ret previous fptr  )
+  dup flen swap fposab ;
+
+: fsof      ( ch -- n )     ( fptr to start, ret prev. fptr   )
+  0 swap fposab ;
+                                     lword @ 0= if-true -->
+     -l feof -l fsof -l fposab or or if-true ;s
+                                                        -->
+( scr#65 )
+( ==== channel name ==== : ch-name                            )
+forth definitions
+                   if-nfound +place 0 " +place" l-load drop
+                   if-nfound  place 0 " place"  l-load drop
+                   if-nfound ?depth 0 " ?depth" l-load drop
+: ch-name   ( a u ch -- a u' | x 0 ( buffer{a,u} channel ch   )
+  3 ?depth base@ >r decimal
+  " /proc/self/fd/" count 4 pick place
+  ch-id 0 <# #s #> 3 pick +place
+  over dup scount drop sp@ linux sys readlink forth
+  r> base ! -4 roll 2drop 2drop ;
+
+                                     lword @ 0= if-true -->
+                                      -l ch-name if-true ;s
+                                                        -->
+\ requires access to the /proc-filesystem
+( scr#66 )
+( == file-name == : path? : fname ) forth definitions decimal
+
+                if-nfound locals)  0 " locals"    l-load drop
+                if-nfound place    0 " place"     l-load drop
+                if-nfound +place   0 " +place"    l-load drop
+                if-nfound c+place  0 " c+place"   l-load drop
+
+                                                        -->
+
+( find file{a2,u2} in or, in 1st segment of, directory{a3,u3} )
+( find file{a2,u2} in or, in 1st segment of, directory{a3,u3} )
+( for "fname":   ( buf,file,path -- buf,file,path',0          )
+(                                -- buf,file,path-to-file,1   )
+
+( scr#67 )
+( == file-name ==   path?   fname ) forth definitions decimal
+
+( find file{a2,u2} in or, in 1st segment of, directory{a3,u3} )
+( for "fname":   ( buf,file,path -- buf,file,path',0          )
+(                                -- buf,file,path-to-file,1   )
+: path?          ( a1 u1 a2 u2 a3 u3 -- a1 u1 a2 u2 a4 u4 0|1 )
+  local l0 1K dup >loc 2 (locals         ( 1:#loc 2:l0        )
+  2dup ": scan 2dup 1/string 2>r sdrop - ( a1 u1 a2 u2 a3' u3')
+  2 l@ place "/ 1 2 l@ c+place 2dup 2 l@ +place
+  2 l@ r/o new-chan open dup 0< 0=
+  if close 2rdrop 2 l@ scount dup 6 pick <
+   if 6 pick place 4 pick scount else 0and endif 2>r
+  endif 2r> rot 0= 1 l@ locals) loc> ;
+( 1027 local cells )                 lword @ 0= if-true -->
+                                        -l path? if-true ;s
+                                                        -->
+( scr#68 )
+( ==== fully qualified file-name from PATH ====   fname       )
+forth definitions
+                if-nfound getenv   0 " getenv"    l-load drop
+\ fname         ( a1 u1 a2 u2 -- a1 u3 | xx 0 )
+\       find file-name{a2,u2} in 'libdir', 'docdir' and PATH,
+\       store full path to buffer buf{a1,u1}, ret string{a1,u3}
+\       ret 0 @tos if file not found in F4 directories or, PATH.
+: fname 4 ?depth               ( a1 u1 a2 u2 -- a1 u3 | xx 0 )
+  libdir count path? 0=
+  if 2drop libdir count + 1+ count + 1+ count path? 0= ( docdir)
+   if 2drop " PATH" getenv
+    enter begin path? entry dup 0= until
+  endif endif 2>r 2drop 2drop 2r> ;
+                                     lword @ 0= if-true -->
+                                    -l fname if-true ;s
+( 2nd-ary call w. 1027 local cells, by "path?" )        -->
+( scr#69 )
+( ==           ==                 ) forth definitions decimal
+
+( scr#70 )
+( ==== read mmapped file data == : readm                      )
+forth definitions
+\
+\ readm         ( a u c -- a1 u1 a2 u2 )
+\       read mmap-ed range {a,u} until next char c, ret string
+\       from a till before char, remaining range after char c.
+: readm
+  over 1- 0< if drop 0. ;s endif
+  >r 2dup over swap r> scan
+  drop over - 2swap 2 pick 1+ /string 2swap ;
+
+                                     lword @ 0= if-true -->
+                                        -l readm if-true ;s
+                                                        -->
+
+( scr#71 )
+( ==== read mmapped file data == : readmc                     )
+forth definitions
+
+\
+\ readmc    ( a u u1 -- a' u' a2 u2 )
+\       fetch at most u1 bytes from memory range {a,u},
+\       ret string{a2,au} and remaining memory range{a',u'}.
+: readmc    ( a u u1 -- a' u' a2 u2 ( max u1 bytes from {a,u} )
+  over 1- 0< if drop 0. exit endif
+  >r over swap r /string rot r> ;
+
+                                     lword @ 0= if-true -->
+                                   -l readmc if-true ;s
+                                                        -->
+
+( scr#72 )
+( ==== read mmapped file data == : readml                     )
+forth definitions
+
+                     if-nfound readm 0 " readm" l-load drop
+                     if-nfound <nl>  0 " <nl>"  l-load drop
+\
+\ readml        ( a u -- a' u' a2 u2 )
+\       fetch next line(a2,u2) from memory(a,u),
+\       leave remaining data range(a',u')
+: readml <nl> readm ;
+
+                                     lword @ 0= if-true -->
+                                   -l readml if-true ;s
+                                                        -->
+
+( scr#73 )
+( ==== F4 help ==== : help   ghd?   gtxt                     1)
+hidden definitions decimal
+
+\ ret non-zero flag if line(a,u) is a comment heading line
+: ghd?      ( a u -- u' | 0 )
+  [ bl 8 << bl or dup ] literal scan literal scan
+  "( scan ascii - scan ") scan sdrop ;
+
+        if-nfound readml 0 " readml" l-load drop
+        if-nfound l@     0 " l@"     l-load drop
+hidden definitions decimal
+\ if f=/=0 ret tf and count u1 of bytes till next empty line
+: gtxt forth     ( a u f -- a u1 1 | a u 0 )
+  dup 0= -exit begin drop readml 0= until 1 l@ swap over- 1 ;
+                                                        -->
+
+( scr#74 )
+( ==== F4 help ====   help   gls?                            1)
+hidden definitions decimal
+
+              ( a u ptr=flg disp -- a1 u1 1 | a' u' 0 | 0 0 1 )
+: gls? over   ( gls entry a1,u1 tf; rmg mem ff; 0. tf at eof  )
+  if swap 1 l! /string              ( .. -- a' u' ( l1: a1    )
+   over c@ [ bl 1+ ] literal <
+   0dup if readml ghd? gtxt endif
+  else 2drop 2drop 0. 1 endif ;     ( .. -- 0  0  1           )
+                                                        -->
+
+\ comment begins after <nl>, with <bl>forthword<bl/tab><bl/tab>
+\ followed by each of "(", "-", ")", in sequence and ends before
+\ next zero length line - spaces & tabs do count!
+
+( scr#75 )
+( ==== F4 help ====   help   readmh                          2)
+                if-nfound place   0 " place"   l-load drop
+                if-nfound c+place 0 " c+place" l-load drop
+                if-nfound locals) 0 " locals)" l-load drop
+                if-nfound ?depth  0 " ?depth"  l-load drop
+hidden definitions decimal
+: readmh                ( a u a1 u1 -- a' u' a2 u2 | 0. 0 )
+  4 ?depth s0 @ 1K >loc >r 0. 2 (locals
+  r place [ bl 8 << <nl> or ] literal -2 r c+place
+  begin 2dup r count match gls? until
+  rdrop locals) 1K loc> ;                               -->
+
+( using 1027 local cells )
+\ scan glossary file for string(a1,u1) entry
+\ ret 0. 0 eof, rmg mem & xx,0 not found, rmg mem & text found
+\ rmg mem left in place for consecutive search passes
+( scr#76 )
+( ==== F4 help ====   help   mgls                            3)
+hidden definitions decimal
+\ mmap 'glossary' file, ret size,addr & def 2constant "gls" to
+\ memory range, ready for munmap, re-fetch if already mmap-ed.
+                if-nfound evaluate 0 " evaluate"  l-load drop
+                if-nfound fname    0 " fname"     l-load drop
+: mgls linux    ( -- size addr | xx 0  ( mmap glosssary file  )
+  " gls" sfind if drop cfa execute sp@ sys munmap 4 ndrop endif
+  local 4K use-loc l0 1K dup >loc 2 (locals    ( 1:#lmem 2:l0 )
+  forth  2 l@ 1 l@ " glossary" count fname dup
+  if 2drop 2 l@ r/o new-chan open dup mmapf rot close drop
+   2dup " gls" sfind
+   if 2drop " to gls" else " 2constant gls" endif evaluate
+  endif 1 l@ locals) loc> ;                             -->
+( 1027 locals + 1027 by 2nd-ary call w. " fname" )
+( locals base ptr pre-adjusted w. "4K use-loc"   )
+( scr#77 )
+( ==== F4 help ==== help )   if-nfound stg 0 " stg" l-load drop
+                       if-nfound to-stg 0 " to-stg" l-load drop
+libdir count + 1+ count + 1+ count   hidden definitions decimal
+0. 252 stg hh                   dup 0. rot 100 + stg hg
+s" \nhelp\t( ccc, -- )\t\t\t(i)\n\tHELP on "         to-stg hh
+s" kernel word ccc, from latest 'glossary' file;\n" +to-stg hh
+s" \tglossary file expected in 'libdir, 'docdir'\n"  +to-stg hh
+s" \tor, in the currently set environmental PATH.\n" +to-stg hh
+hh count pad e\stg to-stg hh
+s" \n\t-?-\n\tgenerate help text w. <make doc> in "   to-stg hg
+s" source dir\n\tcopy file ./d/glossary to "         +to-stg hg
+ ( docdir )  +to-stg hg                       s" \n" +to-stg hg
+hg count pad e\stg to-stg hg
+                                                        -->
+\ default text, for the parameter-less call to "help"
+
+( scr#78 )
+( ==== F4 help ====   help                 5) forth definitions
+\
+\ help      ( ccc, -- )
+\       HELP on kernel word ccc, from latest 'glossary' file;
+\       glossary file expected in 'libdir, 'docdir'
+\       or, in the currently set environmental PATH.
+\       plain HELP displays above notice.
+: help      ( ccc, -- ( help on forthword ccc from glossary )
+  mgls >rr swap name w@ 1- r> if
+   if here count readmh -dup if type drop endif
+   else drop hh count type endif drop ;s
+  endif 2drop 2drop hg count type ;
+                                     lword @ 0= if-true -->
+                                                         ;s
+( using 2K+6 locals, pre-adjusts to 4K by "mgls"              )
+
+( scr#79 )
+( == string w. escaped sequences == : e\type : e\print : \e   )
+forth definitions decimal
+
+: e\type
+  local l0 over 4+ >rr >loc e\stg type r> loc> ;
+
+: e\print scount e\type ;
+
+if-nfound \e    27 constant \e      ( ascii <esc>ape code     )
+
+                                     lword @ 0= if-true -->
+    -l e\type -l e\print -l \e or or if-true ;s
+                                                        -->
+
+( scr#80 )
+( == vt control == : cls                                      )
+hidden definitions decimal
+                     if-nfound >loc  0 " >loc"  l-load drop
+                     if-nfound place 0 " place" l-load drop
+: (vt) <builds        ( define self emitting 'escaped' string )
+  name count        local
+  l0 over 4+ >rr >loc e\stg here over 4+ allot place r> loc>
+  does> count type ;           forth
+
+forth definitions decimal hidden
+(vt) cls \e[2J\e[H
+
+                                     lword @ 0= if-true -->
+                                      -l cls if-true ;s
+                                                        -->
+
+( scr#81 )
+( == vt ctrl == : palette : rst-palette ( linux console, only )
+forth definitions decimal
+
+                 if-nfound e\type  0 " e\type"  l-load drop
+if-nfound \e    27 constant \e      ( ascii <esc>ape code     )
+
+: palette base@ >r >r 0 hex         ( r g b colour# -- )
+  <# # # drop # # drop # # 2drop r> 0 #
+  "P hold "] hold \e hold #> type r> base ! ;
+
+: rst-palette s" \e]R" e\type ;     ( -- ( rst kernel setting )
+
+                                     lword @ 0= if-true -->
+            -l palette -l rst-palette or if-true ;s
+                                                        -->
+
+( scr#82 )
+( == vt display attributes == : vtgrr : bg : fg               )
+forth definitions decimal
+
+if-nfound \e    27 constant \e          ( ascii <esc>ape code )
+
+: vtgrr                   ( n -- ( ecma-48 graphics rendition )
+  0 base@ >r decimal
+  <# "m hold # # "[ hold \e hold #> type r> base ! ;
+                     lword @ if-true -l vtgrr if-true ;s
+
+: fg dup 15 and (i) !      vtgrr ;      ( n -- ('ink' colour  )
+: bg dup 15 and (p) ! 10 + vtgrr ;      ( n -- ('paper' colour)
+
+                                     lword @ 0= if-true -->
+                          -l fg -l bg or if-true ;s
+                                                        -->
+( scr#83 )
+( == vt display attr == : colour          ( red green blue... )
+forth definitions decimal
+
+: colour 30 + constant ;                ( -- n ( colour code  )
+
+0 colour black   1 colour red
+2 colour green   3 colour yellow
+4 colour blue    5 colour magenta
+6 colour cyan    7 colour white
+
+found? palette 0= if-true 1 +continue
+114 110 20 yellow 30 - palette  ( console 'brown' -> yellow   )
+                                ( depends on monitor quality  )
+                                     lword @ 0= if-true -->
+                                   -l colour if-true ;s
+                                                        -->
+( scr#84 )
+( == video mode : dft : bold : normal : blink : rev : uon     )
+hidden definitions decimal
+lword @ if-true found? vtgrr 0= if-true 0 " vtgrr" l-load drop
+
+: (vm) <builds , does> @ vtgrr ;       ( -- ( set video-mode  )
+
+forth definitions decimal
+-l dft                  if-true  0 (vm) dft
+-l bold -l normal or    if-true  1 (vm) bold  22 (vm) normal
+-l blink                if-true  5 (vm) blink 25 (vm) no-blink
+-l rev                  if-true  7 (vm) rev   27 (vm) no-rev
+-l uon                  if-true 38 (vm) uon   39 (vm) uoff
+
+                                    lword @ 0= if-true -->
+                                                        ;s
+
+( scr#85 )
+( == test upper/lower case chars conversion == : cc )
+forth definitions decimal            lword @ 0= if-true -->
+                                       -l cc 0= if-true -->
+          found? e\print 0= if-true 0 " e\print l-load drop
+
+: cc 256 32     ( test upper/lower letter chars conversion )
+  do
+   i 127 = i $9b = or
+   if 12 spaces
+   else i dup . dup emit space dup
+    uc-lc dup rot - if " \e[7m:\e[27m" e\print else space endif
+    dup . emit 2 spaces
+   endif i 8 mod 7 = -cr
+  loop cr ;
+                                                        -->
+
+( scr#86 )
+( string test )
+0. 4K stg buf
+                                        -->
+s" ene mene muh, eia weia weck..."         1024 stg muh
+s" probIER"                                dup  stg probier
+s" \e[7mhuhu\55hallo\54\40tatüeh!\e[27m\n" dup  stg vt
+s" \n\t1\62\-3 - "                    minus +to-stg vt
+
+cr .( test "match" w. 'muh'=") muh print .( " and " eia" => ")
+muh count 2dup " eia" count match rot rot 2drop type
+                                         .( ") cr
+muh count 2dup " meia" count match rot rot 2drop type
+                                         .( ") cr
+s"   base" over #10 swap c! dup stg be ( test 'help' )
+                                        -->
+
+( scr#87 )
+( test nested & words defining 'evaluate' )
+' gls? nfa 4+ (gb) ! ( limit debugger display to latest words
+                                                    -->
+string ' " words cr linux order editor order local order " '
+                                             count #4096 stg ev
+"  count dup stg eva eva evaluate forth"     count   +to-stg ev
+  ev evaluate cr ev print cr
+  if-found sfind " eva" sfind if-true drop cfa execute print cr
+  cr
+                                        -->
+
+\ nested "evaluate": { ev evaluate }
+\ defines a string variable on which it calls "evaluate"
+
+( scr#88 )
+         ;S
+
+0 tdb empty sp! decimal " ../f/figed.scr" using 6 load hex o
+
+lc-ignore sp> hex " XXXXXXXXXXXXXXXXXweiaWEIAxxxxxxxxxxxx" count
+ 2dup  "x skip 2dup dump 1/string "x scan 2dup dump type
+
+o : ww " words" ; : ll " ../f/f4x.scr" ; ll ww l-load
+o : ww " \" ; : ll " ../f/f4x.scr" ; : ss " ../f/figed.scr" ; ll
+ ww l-load
+

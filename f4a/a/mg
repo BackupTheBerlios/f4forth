@@ -1,0 +1,79 @@
+#! /bin/sh
+# --------- f4a v0-00-01+15 - 2001-09-02 ------ .hpr <f4@lxhp.in-berlin.de> --------- #
+# most simply, filter glossary comment, "C"-ish comment lines, semicolon in 1st column:
+# at 1st column per line, either
+#	/*; ... */
+# or
+#	//; ...
+# or
+#	#; ...
+# or, beginning at some column after 2nd
+#	 ...	<tab|blank>#;<blank>...
+#
+# lines which are not a comment and contain a word beginning w. "sys_ " 
+# will be copied to the syscalls reference file.
+function e () { echo ":${1}:">/dev/tty; }
+# ------------------------------------------------------------------------------ #
+
+# program basename
+s=f4
+
+# in:
+
+# destn dir
+d=${1};[ -z "${d}" ]&&d=.||shift
+# source file(s)
+SRCDIR=${SRCDIR:-${0%/*}}
+i=${@};[ -z "${i}" ]&&i="$(find ${SRCDIR} -name \*.S -exec cat \{\} \;)"
+#e "I:${i}\nSRCDIR=${SRCDIR:-${0%/*}}"
+
+# out:
+
+# glosary file name
+o=glossary
+# leading part for the conditionally compiled/assembled words' ref
+r=conditional-in-
+# leading part for the syscalls ref. file name
+y=syscalls-in-
+
+# ------------------------------------------------------------------------------ #
+#;e 1:${a};e 2:${a};
+
+# postfix for assembly with a: "AS", n: "nasm"
+a=a
+# rel. prog. source dir
+p=${s}a
+# version
+v=$($(dirname ${0})/relse.sh r.v.x.t)
+
+# glossary:
+echo -n "# ----- ${p} v${v} -- $(date +%Y-%m-%d) ----------- .hpr <f4@lxhp.in-berlin.de> -- #
+">${d}/${o}
+echo "#|-----|glossary:
+	${i}
+"|sed -e"s/ /\\
+	/g;s/|/ /g">>${d}/${o}
+cat ${i}|grep "^/\*;\|^//;\|^#;\| #; \|	#; "|sed -e "s/\/\/;/\*\//;s/\/\*;//;s/\*\///;s/#;//;s/ #; //;s/	# ;//">>${d}/${o}
+echo "
+# ------------------------------------------------------------------------------ #
+# glossary ${p} v${v} <eof>">>${d}/${o}
+
+# conditionally compiled/assembled words' ref:
+echo -n "# ----- ${p} v${v} -- conditionally cpl'd -- .hpr <f4@lxhp.in-berlin.de> -- #
+
+">${d}/${r}${s}
+tb="$(echo -e "\t")"
+cat ${i}|grep '^_' |while read i
+do a=${i#*\"};[ "${a}" == "${i}" ]&&continue;a=${a%%\"*};n=${i%%${tb}*};echo -e "$n\t\t$a";done|sed -e 's/_../&_/g'|sort -bf >>${d}/${r}${s}
+echo "
+# ---------------------------------------------------------------------------- #
+# conditionally cpl'd ${p} v${v} <eof>">>${d}/${y}${s}
+
+# syscalls ref:
+echo -n "# ----- ${p} v${v} -- syscalls ref ----- .hpr <f4@lxhp.in-berlin.de> ------ #
+
+">${d}/${y}${s}
+find ${SRCDIR} -name \*.S -exec cat \{\} \;|grep -n -v "^//"|grep '\<sys_ '>>${d}/${y}${s}
+echo "
+# ---------------------------------------------------------------------------- #
+# syscalls ref ${p} v${v} <eof>">>${d}/${y}${s}

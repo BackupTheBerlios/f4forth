@@ -1,0 +1,99 @@
+#################################################################################
+f4a - minimal fig-Forth version for i386-pc-Linux, w/ binutils' 2.12 GASP and AS
+	latest source available from <http://www.lxhp.in-berlin.de/lhpf4.html>
+
+	F4,F4A Copyright (C) 2003 by h-peter recktenwald <f4@lxhp.in-berlin.de>
+re file QT-license.txt (en), QT-lizenz.txt in ./d directory
+	for Copyright and useage licensing information.
+---------------------------------------------------------------------------------
+started Mit Jul 24 23:45:30 GMT 2002 0-00-00+00.., hp <f4@lxhp.in-berlin.de>
+	NOTE: testing GASP & AS' att-syntax mode, don't expect anything useable!
+	NOTE: now, since GASP abandoned, MAKE as well, expect something useable.
+---------------------------------------------------------------------------------
+PLEASE, READ THE GLOSSARY and F4-INTRO because, 
+				F4 modelled after F.I.G. FORTH but, is DIFFERENT!
+#################################################################################
+
+
+latest:	"make-f4s new" and, re <./d/glossary> & <./s/fig4th.S> for details.
+	conditionally assembled words re file <conditional-in-f4>,
+	reference to used Linux system calls in file <syscalls-in-f4>,
+	chronological list of development steps in file <changelog>,
+	chronological list of changes re file <cvslog-lN-f4g.txt>.
+
+re vt100,vt102 by 'xterm' 4.xx:
+	VT-control tested with the Linux console and 'rxvt' - I won't care about 
+	'xterm' nor implement a terminfo interpreter, just because those xterm 
+	programmers frequently change their mind w. every new 'X' release. For
+	those who care "xy" and "at-xy" were implemented as deferred words such, 
+	that someone else could employ a more sophisticated procedure...
+	
+re {dropd}, {over-}, {>rr}, {base@}, {+bra} &c:
+	some non-standard words included because of very short/fast lo-level code
+	or, of frequent use such that the rsp lo-level word saves some code space
+	branches optimizing also mainly to saveing code space but also gains some 
+	run-time speed.
+
+f4x.scr
+	hi-level extensions, "load"able after file opened w. "using", { 6 load }
+f4c.scr
+	hi-level example definitions of F4 specific, by fig-Forth standard words.
+figed.scr
+	the fig-forth line editor which also loads <f4x.scr>, by { editor edit }
+f4e.scr
+	full screen editor, w. two windows + workspace, on top of <figed.scr>.
+
+f4view	in the utility dir.
+	to extending Linux 'less' by a view mode for block-files. 
+	<make install> in .d/ subdir and, if <lesspipe> available, add a line 
+	for f4view, as in the example 'lesspipe-patch' or, for <lessopen.sh>
+	set environment vari accordingly, e.g.
+	    export LESS_ADVANCED_PREPROCESSOR=yes LESSOPEN="lessopen.sh %s"
+	try
+	     less ./f/f4x.scr
+
+---------------------------------------------------------------------------------
+#################################################################################
+
+compiling tools
+    AS from binutils 2.12 (2.13), with CPP (ex CC 2.95.4 or 3.1+, egcc 2.91.66)
+with
+    make-f4s which is a bash (2.05) script, substituteing the 'make' utility.
+
+The installation procedure most probably would require root access rights for 
+which the variable SU will be set in <make-f4s>. Depending on the particular 
+system set-up this might then emanate endless (annoying...) password requests 
+which can be disabled by setting SU empty, 'SU =', and installing the program 
+manually, with the appropriate procedure.
+
+Check file
+	    ./i/f4-asm-cfg.h
+for constants which control conditional assembly of certain forth words, as 
+noted in <./d/conditional-in-f4> and modify to suit. Default settings provide 
+for a fully featured, easily extendable system w. basic debugging words.
+
+Then, from any sub- or, the main dir
+	    DEBUG=no ./make-f4s install
+
+or, if using a different Linux kernel (supplied binary cpl'd for 2.4.19)
+	    DEBUG=no ./make-f4s empty install
+
+which copy the new files, old ones backing up, to the installation dirs.
+
+newly compiling w. debugging symbols
+	    DEBUG=all ./make-f4s clean install
+
+	    ./make-f4s uninstall
+prior to other make-s would remove the installed binaries and backup-files.
+    
+other options will be shown w.
+	    ./make-f4s help
+
+check the <make-f4s> script for configureable items.
+
+
+#################################################################################
+f4a compiled and tested with (host system based on debian 2.1/2):
+    - re file <ver-linux> in ./d directory -
+#################################################################################
+# F4 INSTALL <eof>

@@ -1,0 +1,41 @@
+#################################################################################
+---------------------------------------------------------------------------------
+PLEASE, READ THE GLOSSARY and F4-INTRO because, 
+				F4 modelled after F.I.G. FORTH but, is DIFFERENT!
+---------------------------------------------------------------------------------
+	F4,F4A Copyright (C) 2003 by h-peter recktenwald <f4@lxhp.in-berlin.de>
+
+re file QT-license.txt (en), QT-lizenz.txt in ./d directory
+	for Copyright and useage licensing information.
+	
+f4a	fig-Forth-1.0 style Forth for i386-pc-Linux/ELF
+	source  <http://www.lxhp.in-berlin.de/lhpf4.html>
+	author h-peter recktenwald <f4@lxhp.in-berlin.de>
+
+	A standard fig-Forth wouldn'd be very useful, as a Linux/ELF program. 
+	Thus, F4 is reasonably close to, but NOT exactly a standard fig-Forth.
+	Please, read F4-INSTALL and F4-INTRO, for some most essential notes.
+	F4 wouldn't be much of use, without knowledge of those specifica!
+
+re file F4-INSTALL, required pre-requisites, generating the binary, where and 
+	how to install the program and related docs, libraries.
+
+re file F4-INTRO for F4 specific handling, wrt standard fig-Forth and,
+	file and host system access.
+
+#################################################################################
+
+directories:
+	./a	administrative utilities
+	./b	binaries
+	./f	forth program library
+	./d	documentation
+	./i	include-files for F4 assembly
+	./l	generated assembly listing
+	./o	old stuff
+	./s	main F4 asm source <fig4th.S>
+	./t	some more less than more, meaningful tests...
+	./u	user utilities
+
+#################################################################################
+# F4 README <eof>

@@ -1,0 +1,11 @@
+#! /bin/sh
+# lx kernel source version ermitteln
+
+m=${1}
+[ -n "${m}" ]||m=/usr/src/linux
+
+# hierfuer leerzeichen aus versionsangabe in <Makefile> entfernen
+
+export $(head -n4 ${m}/Makefile|sed -e 's/\ //g')
+#echo -e "\nVERSION=${VERSION}\nPATCHLEVEL=${PATCHLEVEL}\nSUBLEVEL=${SUBLEVEL}\nEXTRAVERSION=${EXTRAVERSION}\n">/dev/tty
+echo ${VERSION}${PATCHLEVEL}&&exit 0

@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+# Preprocessor for 'less'.
+# Use with environment variable:  LESSOPEN="lessopen.sh %s"
+#
+# (C) 2001 SuSE, Vladimír Linek
+# report bugs to: feedback@suse.de
+#
+export LESS_ADVANCED_PREPROCESSOR=yes
+#LESSOPEN="lessopen.sh %s"
+
+
+SRC=$1
+NAME=${SRC##*/}
+
+[ ! -r "$SRC" ] && exit 1
+
+TMPF=$(mktemp /tmp/less.XXXXXX) || exit 1
+TMPF_pre=$(mktemp /tmp/less.XXXXXX) || { rm -f $TMPF; exit 1; }
+
+case $LANG in
+    ja*)
+    GROFF_DEVICE=nippon
+    ;;
+    *)
+    GROFF_DEVICE=latin1
+    ;;
+esac
+
+CMD=
+type=`file -L "$SRC"`
+case ${type#"$SRC": } in
+	*"gzip compressed data"*|\
+	*"compress'd data"*|\
+	*"packed data"*)
+		CMD="gzip -dc" ;;
+	*"Zip archive data"*)
+		CMD="unzip -v" ;;
+	*"bzip"*" compressed data"*)
+		CMD="bzip2 -dc" ;;
+	*)
+		rm -f $TMPF_pre
+		TMPF_pre=$SRC ;;
+esac
+
+test -n "$CMD" && $CMD "$SRC" >$TMPF_pre 2>/dev/null
+
+if [ x"$LESS_ADVANCED_PREPROCESSOR" = "xyes" ]; then
+    case "$SRC" in
+	*.scr.*|*.scr|*.blk|*_scr|*_scr.*)
+#	    /usr/local/bin/f4view -- $TMPF_pre >$TMPF
+	    /usr/local/bin/f4view $TMPF_pre >$TMPF
+	    ;;
+	*)  type=`file -L $TMPF_pre`
+	    case ${type#"$TMPF_pre": } in
+		    *troff*)
+			    if [ -x "`which groff`" ]; then
+			    case $NAME in
+				    *.[1-9nxp]*|*.man|*.[1-9nxp]*.*|*.man.*)
+					    groff -s -p -t -e -T$GROFF_DEVICE -mandoc "$TMPF_pre" >$TMPF 2>/dev/null ;;
+				    *.ms|*.ms.*)
+					    groff -T$GROFF_DEVICE -ms "$TMPF_pre" >$TMPF 2>/dev/null ;;
+				    *.me|*.me.*)
+					    groff -T$GROFF_DEVICE -me "$TMPF_pre" >$TMPF 2>/dev/null ;;
+				    *)
+					    groff -T$GROFF_DEVICE "$TMPF_pre" >$TMPF 2>/dev/null ;;
+			    esac
+			    else echo "No groff available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *tar\ archive*)
+			    if [ -x "`which tar`" ]; then
+			    tar tvvf "$TMPF_pre" >$TMPF 2>/dev/null
+			    else echo "No tar available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *RPM*)
+			    if [ -x "`which rpm`" ]; then
+			    (echo -e "=============================== Information ====================================\n";
+			    rpm -qip "$TMPF_pre";
+			    echo -e "\n\n================================= Content ======================================\n";
+			    rpm -qlp "$TMPF_pre") >$TMPF 2>/dev/null
+			    else echo "No rpm available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *DVI*)
+			    if [ -x "`which dvi2tty`" ]; then
+			    cp "$TMPF_pre" $TMPF.dvi; dvi2tty -q $TMPF.dvi >$TMPF 2>/dev/null; rm $TMPF.dvi
+			    else echo "No dvi2tty available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *PostScript*)
+			    if [ -x "`which ps2ascii`" ]; then
+			    ps2ascii "$TMPF_pre" >$TMPF 2>/dev/null
+			    else echo "No ps2ascii available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *PDF*)
+			    if [ -x "`which pdftotext`" ]; then
+			    pdftotext "$TMPF_pre" $TMPF 2>/dev/null
+			    else echo "No pdftotext available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *HTML*)
+			    if [ -x "`which lynx`" ]; then
+			    lynx -dump -force_html "$TMPF_pre" >$TMPF 2>/dev/null
+			    else echo "No lynx available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+			    ;;
+		    *\ ar\ archive*)
+			    case $NAME in
+				    *.deb)
+					    if [ -x "`which dpkg-deb`" ]; then
+					    dpkg-deb -c "$TMPF_pre" >$TMPF 2>/dev/null
+					    else echo "No dpkg-deb available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+					    ;;
+				    *)
+					    if [ -x "`which nm`" ]; then
+					    nm "$TMPF_pre" >$TMPF 2>/dev/null
+					    else echo "No nm available"; rm -f $TMPF; TMPF=$TMPF_pre; fi
+					    ;;
+			    esac
+			    ;;
+		    *)
+			    rm -f $TMPF
+			    TMPF=$TMPF_pre ;;
+	    esac
+	    ;;
+    esac
+else
+	rm -f $TMPF
+	TMPF=$TMPF_pre
+fi
+
+test "$TMPF_pre" = "$SRC" -o "$TMPF_pre" = "$TMPF" || rm $TMPF_pre
+
+test "$TMPF" = "$SRC" || echo $TMPF

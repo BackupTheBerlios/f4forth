@@ -1,0 +1,215 @@
+#!/usr/bin/perl
+# Convert "cvs log" output to HTML.
+#	- Cameron Simpson <cs@zip.com.au> 19may2000
+
+=head1 NAME
+
+cvslog2html - transcribe CVS logs to HTML or plain text
+
+=head1 SYNOPSIS
+
+cvslog2html [-t] [-O] [{cvs-log-args...|-}]
+
+=head1 DESCRIPTION
+
+I<cvslog2html>
+writes a CVS log as human friendly HTML or plain text
+to its standard output.
+
+If the sole non-option argument is a dash
+then I<cvslog2html> expects 
+"cvs(1) log" output as its input.
+
+Otherwise the command:
+
+	B<cvs log> I<cvs-log-args...>
+
+is run to obtain the log data.
+
+=cut
+
+use cs::Misc;
+use cs::HTML;
+use Getopt::Std;
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-O>
+
+Obfuscate email addresses.
+Intended for things which are to be published on the web
+as a defense against address harvesting spiders.
+
+=item B<-t>
+
+Text mode - write plain text instead of HTML.
+
+=back
+
+=cut
+
+$TextMode=0;
+$ObfuscateEmail=0;
+getopts("tO") || die "$::cmd: bad options\n";
+$TextMode=1 if defined $::opt_t;
+$ObfuscateEmail=1 if defined $::opt_O;
+
+=back
+
+=cut
+
+if (@ARGV == 1 && $ARGV[0] eq '-')
+{
+  if (-t STDIN)
+  { die "$::cmd: I'm expecting \"cvs log\" data on my input, not a terminal!\n";
+  }
+}
+else
+{ open(STDIN,"cvs log @ARGV |") || die "$0: can't pipe from \"cvs log @ARGV\": $!\n";
+}
+
+while (defined ($_=<STDIN>))
+{
+  chomp;
+
+  if ($incomment)
+  { if (/^=============================================================================$/
+     || /^----------------------------$/
+      )
+    { $incomment=0;
+      if (@comment)
+      { push(@log,[$file, $day, $time, $author, @comment]);
+      }
+    }
+    elsif (!@comments && /^branches:/)
+    {}
+    elsif (!@comments
+        && ( $_ eq '*** empty log message ***'
+	  || /^initial (commit|check\s*in|revision)/i
+	   )
+	  )
+    {}	# Noise
+    else
+    { push(@comment,$_);
+      ## warn "note $_\n";
+    }
+  }
+  elsif (/^$/)
+  { undef $file;
+  }
+  elsif (! defined $file)
+  { if (/^Working file:\s+/)
+    { $file=$';
+    }
+  }
+  else
+  { if (/^date:\s+(\d\d\d\d)\/(\d\d)\/(\d\d)\s+(\d\d:\d\d:\d\d);\s+author:\s+(\w+);/)
+    { $incomment=1;
+      $day="$1-$2-$3";
+      $time=$4;
+      $author=$5;
+      @comment=();
+    }
+  }
+}
+
+die "$::cmd: nothing in the CVS log!\n" if ! @log;
+
+undef $day;
+undef $auhtor;
+undef $file;
+undef $time;
+
+if (! $TextMode)
+{ my $pwd;
+  chomp($pwd=`pwd`);
+  my $htpwd = r2h($pwd);
+  print "<TITLE>CVS log for $htpwd</TITLE>\n";
+  print "<H1>CVS log for $htpwd</H1>\n";
+}
+
+if (! $TextMode)
+{ print "<UL>\n";
+}
+
+for my $L (reverse sort cmplogs @log)
+{
+  my($f,$d,$t,$a,@C)=@$L;
+
+  if (! defined $day || $day ne $d)
+  { if (defined $day && ! $TextMode)
+    { print "</PRE>\n";
+    }
+
+    $day=$d;
+    undef $author;
+
+    if ($TextMode)
+    { print "$day\n";
+    }
+    else
+    { print "<LI><B>$day</B><BR>\n";
+      print "<PRE>";
+    }
+  }
+
+  if (! defined $author || $author ne $a)
+  { $author=$a;
+    undef $file;
+    print "    $author:\n";
+  }
+
+  for my $comment (@C)
+  { if ($ObfuscateEmail)
+    { $comment =~ s/(\S)\@(\S+)/$1-at-$2/g;
+    }
+
+    if (! defined $file || $file ne $f)
+    { $file=$f;
+      print "      ".fref($file).": ";
+      $indent="      ".(' ' x length($file))."  ";
+    }
+    else
+    { print $indent;
+    }
+
+    print r2h($comment), "\n";
+  }
+}
+
+if (! $TextMode)
+{ print "</UL>\n";
+}
+
+sub r2h { $TextMode ? "@_" : &cs::HTML::raw2html }
+
+sub fref
+{ my($file)=@_;
+  $TextMode ? $file : cs::HTML::tok2a([A,{HREF=>$file},$file]);
+}
+
+sub cmplogs
+{
+  my($f1,$d1,$t1,$a1)=@$a;
+  my($f2,$d2,$t2,$a2)=@$b;
+
+  my $daf1 = "$d1 $a1 $f1";
+  my $daf2 = "$d2 $a2 $f2";
+
+  $daf1 eq $daf2
+  ? $t2 cmp $t1
+  : $daf1 cmp $daf2
+  ;
+}
+
+=head1 SEE ALSO
+
+cvs(1)
+
+=head1 AUTHOR
+
+Cameron Simpson E<lt>cs@zip.com.auE<gt> 19may2000
+
+=cut

@@ -1,0 +1,124 @@
+#! /usr/bin/make -f
+# staendig neue 'versionen' machen dank ueberaus geschickt versteckter - wenn uberhaupt vorhandener - 'dokumentation'
+# die sache oft ungemein spannend - will sagen, das raetselraten, welch ein neuer schwachsinn nun wieder alles noch 
+# so sorgfaeltig durchprobierte zunichte gemacht haben mag, laeszt die sache zum nervtoetenden aergernis werden! 
+# woraus folgt: lassen sich wieder einmal die binaerteile nicht erzeugen, ist dies im allgemeinen NICHT den autoren der
+# zu compilierenden programme zuzuschreiben! Und: man mag bitte nicht mich mit debian'schem mist noch mehr belaestigen.
+# 'ich', das ist hp, f4@lxhp.in-berlin.de, mit -- Copyright 2003 Berlin -- auf all dieses zeugs hier...
+
+.EXPORT_ALL_VARIABLES:
+PDH_VERBOSE=1
+
+# dumm: bei "usr/local" entstehen voellig vermurkste directory-strukturen
+# nach besetzen der vorgabe fuer die pfade in diesem script gehen 'doc' und 'doc-base' noch nach '/usr/share', der rest ist in ordnung
+prefix =usr/local
+
+PATH += .
+TOPDIR =$(shell pwd)
+
+admdir=a
+bindir=b
+docdir=d
+utldir=u
+libdir=f
+
+Depends=
+mvprog=/bin/mv
+upxprg=$(shell which upx)
+
+relse =$(shell $(TOPDIR)/$(admdir)/relse.sh r.v.x)
+rels  =$(shell $(TOPDIR)/$(admdir)/relse.sh r.v)
+rel   =$(shell $(TOPDIR)/$(admdir)/relse.sh r)
+
+f4m=f4.1
+f4i=f4.xpm
+
+PREFIX=$(prefix)
+DDBDIR=$(prefix)/share/doc-base
+MNUDIR=etc/menu/
+ICNDIR=usr/X11R6/include/X11/pixmaps
+
+INSTDIR=$(prefix)/bin
+ILIBDIR=$(prefix)/lib/f4a
+IDOCDIR=$(prefix)/share/doc/f4a
+IMANDIR=$(prefix)/share/man/man1
+
+STRIPP=$(shell which strip)
+
+xfiles=$(utldir)/f4view/* $(utldir)/f8ed/* $(utldir)/less* $(utldir)/00-README
+pfiles=$(bindir)/fig4th $(bindir)/f4a $(bindir)/f4g $(bindir)/f4ed
+dfiles=$(shell cd $(docdir);\
+	for i in cvslog* f4[^.v]*[^mi] figdoc.txt figforth.asm figforth.scr.seq figglossary.txt figreadme.txt \
+		forth_forth_int forth_forth_scr forth_forth_txt glossary LATEST-CVS magic qf-680xx.asm QT-* \
+		sudoers-make,install syscalls-in-f4 ver-linux; do echo -n "$(docdir)/$$i ";done )
+dfiles += f4a.lsm 
+hfiles =$(docdir)/glossary
+
+upd:
+	@(cd ./debian;echo -e "f4a ($(shell ./a/relse.sh deb)) unstable; urgency=low\
+	\n\n  * Intermediate Release v$(shell ./a/relse.sh r.v.x.t) - re changelog.\n\n\
+	 -- HP Recktenwald <f4@f4.in-berlin.de>  $(shell LC_ALL=C date +%a,\ %d\ %b\ %Y\ %T\ +0000)\n\n">c$$;\
+	cat changelog >>c$$;$(mvprog) c$$ changelog)
+
+build: upd build-stamp
+
+build-stamp:	dt doc f4e f4g f4a
+	$(STRIPP) -s -X -R .sbss -R .comment -R .note $(bindir)/fig4th
+	touch build-stamp
+# INSTDIR=$(INSTDIR) IDOCDIR=$(IDOCDIR) ILIBDIR=$(ILIBDIR)
+$(bindir)/f4g f4g:
+	(DESTDIR=/ DEBUG=all $(MAKE) f4)
+	cp $(bindir)/fig4th $(bindir)/f4g
+
+$(bindir)/f4a f4a:
+	(DESTDIR=/ DEBUG=no $(MAKE) f4)
+	cp $(bindir)/fig4th $(bindir)/f4a
+
+$(bindir)/f4e f4e:
+	(DESTDIR=/ DEBUG=strip $(MAKE) install f4e)
+
+doc:
+	$(MAKE) doc
+
+dt:
+	dh_testdir
+	dh_installdirs -A $(DDBDIR) $(ICNDIR) $(MNUDIR) $(INSTDIR) $(IDOCDIR) $(IMANDIR) $(ILIBDIR)
+
+clean:	dt
+	dh_testroot
+	rm -f build-stamp
+	-$(MAKE) empty
+	-rm -rf debian/tmp
+	dh_clean
+
+# Build architecture-independent files here.
+binary-indep: build
+
+# Build architecture-dependent files here.
+binary-arch: build dt
+	dh_testroot
+	dh_clean -k
+	dh_installdirs -A $(DDBDIR) $(ICNDIR) $(MNUDIR) $(INSTDIR) $(IDOCDIR) $(IMANDIR) $(ILIBDIR)
+	install -g users -m 555 $(pfiles)		debian/tmp/$(INSTDIR)/||:
+	install -g users -m 644 $(libdir)/* $(hfiles)	debian/tmp/$(ILIBDIR)/||:
+	install -g users -m 644 $(hfiles) $(dfiles)	debian/tmp/$(IDOCDIR)/||:
+	install -g users -m 644 $(docdir)/$(f4i)	debian/tmp/$(ICNDIR)/ ||:
+	install -g users -m 644 $(docdir)/$(f4m) 	debian/tmp/$(IMANDIR)/||:
+	find $(TOPDIR)/debian/tmp/ \( -name \*.bk -o -name \*.bup -o -name \*~ -o -name \*\[0-9\]r -o -name Makefile \) -exec /bin/rm \{\} \;
+	dh_installdocs $(dfiles)
+	dh_installexamples
+	dh_installmenu
+	dh_installman
+	dh_installchangelogs
+	dh_fixperms
+#	chmod a+x,a-w $(xfiles)
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+source diff:
+	@echo >&2 'pse, use dpkg-source -b';false
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary

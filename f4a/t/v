@@ -1,0 +1,13 @@
+( test { chain file } and { ... end } )
+ 0 cons? . ( ." I:" . )
+ 1 cons? . ( ." O:" . )
+ 2 cons? . ( ." R:" . )
+ io-cons . ( ." X:" . )
+ vt? . 
+ 0 cons? ." I:" . 
+ 0 cdt 64 dump cr 1 cdt 64 dump cr 2 cdt 64 dump 
+ ." ene mene muh UND RAUS BIST DU!" cr
+chp 16 b.
+-- 0 chp c! 
+.s
+( end )

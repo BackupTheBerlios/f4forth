@@ -1,0 +1,58 @@
+( ============================================================ )
+( F4: fig4th < seq2blk.f4  sourcefile destnfile                )
+(     convert stream to screen-file, max. line length c/l chrs )
+( ============================================================ )
+
+1 vt? io-cons 2drop
+
+decimal
+-1 warning !
+
+2nd-voc linux hidden
+2nd-voc forth linux
+
+: ?er over	( flg ernum -- )
+  if ."  ::" dup message space .s bbi endif 2drop ;
+: ?fer dup 1- 0< 8 ?er ;
+
+: abort" state@
+  if
+   [_] if [_] ." [_] bye [_] endif 
+  else
+   [_] " swap if print bye else drop endif
+  endif ; immediate
+
+-16 +origin @ 2 - 0< abort" arguments missing"
+-12 +origin @    @ 1- r/o     new-chan open ?fer constant ic
+-12 +origin @ 4+ @ 1- w/r cre new-chan open ?fer constant oc
+
+0 variable bls c/l 4- allot bls c/l blanks
+10 constant <nl>
+
+: ow oc -1 fwrite ;
+: eof? ch-rnum 1- 0< ;
+
+: >scr 
+  [ b/buf b/scr * dup ] 
+  literal 0 oc fposre literal mod -
+  -dup if 0 do bls c/l ow c/l +loop endif ;
+
+: scr? + 4- @ 8 >> $3e2d2d - -exit >scr ;
+
+: co
+  begin
+   pad 200 ic <nl> fread 
+   dup c/l 1+ < 0= abort" input line too long" 
+   2dup
+   >rr ow c/l r> - 0max
+   -dup if bls swap ow endif
+   scr?
+  ic eof? until
+  oc ch-id sp@ sys datasync drop 2drop
+  >scr ;
+
+co
+ic ch-rnum dup 0< minus and abs bbi
+
+( ============================================================ )
+end

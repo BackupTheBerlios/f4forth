@@ -1,0 +1,36 @@
+#! /usr/src/asm/f4a/t/fig4th bel lload f4 bel lload arg? .( header args: ) cr arg? linux sp@ sys getpid ." pid:" . drop cr 
+\ #! /usr/local/bin/f4g      bel lload f4 bel lload arg? .( header args: ) cr arg? linux sp@ sys getpid ." pid:" . drop cr 
+.( script execution sequence: script header arguments; command-line arguments; script text ) cr
+." TAB:"	." :TAB"
+base@ hex chans base !
+	bel tab .( <key> to continue... ) key drop cr
+	if-nfound arg? lload f4 here 16 b. 
+	vlist
+	bel cr tab .( <key> to continue... ) key drop cr
+	 ." ENE MENE MUH und raus bist du!" 
+	cr ." blk:" blk ? cr hex chans mem?
+bel cr tab .( <key> to continue... ) key drop cr
+." BLK:" blk ? ."  rel STDIN:" stdin chp + c@ dup . ch-id #16 b. cr 
+ 
+cr ." (BITS) @ %" (bits) @ 2 b. 
+(bits) @ 1 #1 << and if-true         tab ." inserting" cr
+(bits) @ 1 #2 << and if-true tab tab tab ." xec script" cr
+(bits) @ 1 #3 << and if-true tab tab tab ." args passed" cr
+(bits) @ 1 #5 << and if-true tab tab tab ." case independent" cr
+(bits) @ 1 #6 << and if-true tab tab tab ." {included}" cr
+(bits) @ 1 #7 << and if-true tab tab tab ." xec by {evaluate}" cr
+
+if-nfound help  bel lload help
+if-nfound chans bel lload chans
+help here
+
+." ARGC:" argc . cr : a argc -dup if 0 do i 4* argp + @ zcount i . "` emit type "' emit space space loop endif ; a cr
+0 cons?  ." IN-CONS:" . 1 cons?  ." OUT-CONS:" . 2 cons?  ." ERR-CONS:" .  
+io-cons  ." IO-CONS:" .  vt? ." VT:" . 0 cons? ." IN-CONS:" . cr
+cr
+." <esc> to terminate, else 'quit'" 
+: y 1 #2 << not (bits) and! quit ; \ clr scripting flag, enter interpreter loop
+: x kbd chp stdin chp c!! key #27 = 	\ <esc> or, continue interactively
+  if bye endif kbd chp stdin chp c!! ;
+sp> 
+x forget x o chans y

@@ -1,0 +1,8 @@
+# debian 2.2.: patch 'lesspipe' for <f4view>:
+
+      # Decode file for less
+      case $(echo $1 | tr '[:upper:]' '[:lower:]') in
+	*.scr.*|*.scr|*.blk|*_scr|*_scr.*)
+	  [ -x /usr/local/bin/f4view ]&&/usr/local/bin/f4view -- $1 ;;
+	*.arj)
+	  if [ -x /usr/bin/unarj ]; then unarj l $1; else echo "No unarj available"; fi ;;
