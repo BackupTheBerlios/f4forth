@@ -23,7 +23,7 @@ Xfencems:
 	pushl $M_FENCE
 	popl TS		//;:contd: Xmessage
 // ( n -- )
-Xmessage:		//<;Xfencems)
+Xmessage:		//<Xfencems)
 	pushl NXL
 Cmessage:
 	movl uref(warningu),ecx
@@ -37,7 +37,7 @@ Cmessage:
 	andb $~64,3+uref(offsetu)//;force dr0
 	spush
 	popl TS
-	call Cdotline
+	call Cdotline	//; .line
 	popl uref(offsetu)
 	ret
 5:	pushl TS
@@ -51,17 +51,20 @@ Cmessage:
 	xorl TS,TS
 	jmp Cdotr
 // ; i: eax=message no.; o: ptr to byte-counted text
-cfmsg:	movl TS,ecx
-	leal msgt,eax
+cfmsg:	movl TS,ecx	//<Cmessage);
+	movl uref(bmsgbu),TS
+	testl TS,TS
+	jnz 2f
+	leal msgt0,TS
 2:	decl ecx
 	js 1f		//;?; msg no. found
-	movzbl (eax),edx
-	leal 2(edx,eax),eax
-	cmpl $-1,(eax)
+	movzbl (TS),edx
+	leal 2(edx,TS),eax
+	cmpl $-1,(TS)
 	jnz 2b		//;?; more in list
-1:	cmpb $1,(eax)
+1:	cmpb $1,(TS)
 	jns 3f		//;?; stg not empty 
-	leal mgtmsg,TS
+4:	leal mgtmsg,TS	//; text fuer undefinierte meldung
 3:	ret
 // ( -- )
 Xqexec:	pushl NXL

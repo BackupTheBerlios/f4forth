@@ -317,7 +317,6 @@ Ciofcntl:			// :contd: <Ciononbl><stoio,Ciomode)
 1:	popal
 	ret
 // ; provisorisch: tty7 aufmachen, wenn 'rkey' mit kbd nicht spielt
-.ifne 1
 t7open:	pushal		//<Xrqky)
 	leal tty7t,ebx
 	jmp 2f
@@ -333,20 +332,6 @@ kbopen:	pushal		//<stoio)
 	movl TS,cdtref(chid)+cdtptr(kbdch)
 1:	movl TS,ebx
 	jmp vtini_n
-.else
-kbopen:	pushal		//<stoio)
-	xorl edx,edx
-	movl cdtref(chid)+cdtptr(kbdch),ebx
-	cmpl edx,ebx
-	jns vtini_n	// ;?; if already open set kbd mode
-	pushl $O_RDWR
-	leal ttyt,ebx
-	popl ecx
-	sys_ open	//;open kbd channel
-	movl TS,cdtref(chid)+cdtptr(kbdch)
-	movl TS,ebx
-	jmp vtini_n
-.endif
 // ; i: esi=vmem data template
 vtini:	pushal		//<stoio)
 	movl cdtref(chid)+cdtptr(stdin),ebx
@@ -485,18 +470,20 @@ rwmem:	pushal			//<;setmem)
 	popal
 	ret
 //;
-//; <setmem>
-//; in (1st or 2nd level subroutine, only!):
+//; <setmem> - 1st or 2nd level subroutine, only!
+//; in:
 //;	edx = argp = esp-4, sto argc & argp to mem @+origin
-//; allocates
-//;	.ss:  screenfile-buffer, tib, user-area, return-stack (bottom end, self-extending)
+//; allocates F4 initial memory ranges
+//;	.ss:  return-stack (bottom end, self-extending)
 //;	.bss: dictionary (extendable by sys_brk)
-//;	mmap: PS, UP, tib+first/limit (resizeable by sys_mremap)
-//; out
-//;	regs:    KR, PS, RS, UR
-//;	sysvari:     s0, r0, u0, argc, argp, dcbot, dcsiz, psbot, pstop, tib, tibsz
-//;	stored to initial +origin for emergency re-start ("warm"), after segfault &c
-//;	constitutes write-protected ranges of args and env vari, r/w enabled F4 sysvari
+//;	mmap: data-stack PS, user-area UP, screenfile-buffer,
+//;	      vmem, tib+first/limit (resizeable by sys_mremap)
+//; out:
+//;	regs:	 KR, PS, RS, UR
+//;	sysvari: s0, r0, u0, argc, argp, dcbot, dcsiz, psbot, pstop, tib, tibsz
+//;		 stored to initial +origin for emergency re-start ("warm"), 
+//;		 after segfault &c; constitutes write-protected ranges of args 
+//;		 and env vari, r/w enabled F4 sysvari.
 //;
 setmem:	call rwmem	//<;_start) unprotect channel tables & other runtime data which are not acessed via vmem
 	call vblockd		//; esi := 1st program header destn address (p_vaddr) :8051004:::

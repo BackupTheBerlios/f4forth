@@ -1328,18 +1328,18 @@ _to	c toco,"=:",Xtocons,imed	/*"*/
 //;	name by supplied string at a, no message if same name multiply defined.
 //;	the procedure stores (re-locates) the input name string to dictionary at 
 //;	{here}+, adds flag bits and trailing -ve count byte, link- and codefield, 
-//;	arranged to the lowest address at which lfa begins at a multiple of 4.
+//;	nfa adjusted such that lfa at lowest available 4-aligned address.
 	c head,"head",Xhead,,,hidden
 //;
 //; create 	ccc( -- )			(p)
 //;	builds a forth primitive word header, marked not findable, "smudged":
-//;	[flg+count.b name -count.b][ -ve link ][ xecptr(pc) ][ data...
-//;	[nfa                       [lfa        [cfa          [pfa...
+//;	[flg+count.b | name | -count.b][ -ve link ][ xecptr(pc) ][ data...
+//;	[nfa                           [lfa        [cfa          [pfa...
 //;	nfa adjusted such that lfa at lowest possible 4-aligned address.
 //;	shortest header is a single char name and, lfa + cfa, i.e. 12 bytes.
 //;	Any compiling words might allocate additional dictionary space from host 
 //;	system - re {allot} or, {vallot} for writable data memory.
-//;	re {does>@}, {does>v}, {<builds}, {does>}
+//;	re {does>@}, {does>v}, {<builds}, {does>}, {head}
 	c create,"create",Xcreate
 //;
 //; <builds	( -- )				(p)
@@ -1897,9 +1897,13 @@ _af	c afind,"-afind",Xafind,,,hidden
 	udefl(berrbu),berrb+cfa2pfa
 //;
 //; message	( n -- )			(d)
-//;	if "warning" =/= 0, send the text of line n relative to line 0 of scr 4 
-//;	from dr0 to stdout; display n if WARNING = 0 or message file in dr0 not 
-//;	accessible. deferred, dft '[msg]', standard messages on dr0, scr 4,5:
+//;	sends the n-th message text to stdout, dependent on @warning:
+//;	 < 0 : line n relative to line 0 of scr 4 from dr0 or,
+//;	     : text "msg# " and n if dr0-file not accessible
+//;	 = 0 : text "msg#" and the message number, n;
+//;	 > 0 : n-th counted & <nul>-terminated string from table @<msg>.
+//;	re 'message' default word {[msg]}, {is}, re {warning}, {error}, {<msg>}.
+//;	standard messages on dr0, scr 4,5:
 //;	 0  NOT IMPLEMENTED (kernel text)
 //;	 1  EMPTY STACK
 //;	 2  DICTIONARY FULL
@@ -1917,7 +1921,6 @@ _af	c afind,"-afind",Xafind,,,hidden
 //;	22  USE ONLY WHEN LOADING
 //;	23  OFF CURRENT EDITING SCREEN
 //;	24  DECLARE VOCABULARY
-//;	deferred, can be altered w. 'is' or 'to' or, by disp @pfa wrt @(vb).
     c message,"message",domdfer
 	    .long mesgv-D,mesg+cfa2pfa
 //;
@@ -2156,6 +2159,10 @@ _af	c afind,"-afind",Xafind,,,hidden
 	udef(iobotu)
 //;	 44:172|0cc    	<iosizu>	blockbuf size (hex 2000)
 //;	 48:176|0d0    	<wsizu>		console window sizes
+//;
+//; (ws)	( -- a )	  48:176|0d0		hidden
+	c bwsb,"(ws)",dobuser,,,hidden
+	udef(wsizu)
 //;	 52:180|0d4    	<vbu>		bottom of mmapped variables' memory
 //;
 //; (vb)   	( -- a )	  52:180|0d4		hidden
@@ -2288,9 +2295,11 @@ _af	c afind,"-afind",Xafind,,,hidden
 //;	dft <quit> wa. re {(abort)}.
 	c bquitq,"(quit)",douser,,,hidden
 	udefl(quitu)
+// ;    pcsp			 160:288:140	unbenutzt und behalten als
+// ;    pcrp			 164:292:144	reserve fuer wer weisz was (ich nicht)
 //;
-//; (col)  	( -- a )	 160:288:140		editor
-//; (row)  	( -- a )	 164:292:144		editor
+//; (col)  	( -- a )	 168:296:148		editor
+//; (row)  	( -- a )	 172:300:14a		editor
 //;	{ xy (col) 2! } stores 'x' to (col) and 'y' to (row).
 //;	provisional for f4p, f4e &c: by counted output chars cursor position.
 	c pcolp,"(col)",douser,,,editor
@@ -2298,25 +2307,33 @@ _af	c afind,"-afind",Xafind,,,hidden
 	c prowp,"(row)",douser,,,editor
 	udefl(rowu)
 //;
-//; (err) 	( -- a )	 168:296|148		hidden
+//; (err) 	( -- a )	 176:304|14c		hidden
 //;	{error} xec vec, by dft set to {[error]} cfa.
-	c perrq,"(err)",dobuser,,,hidden
+	c perrq,"(err)",douser,,,hidden
 	udefl(berrbu)
 //;
+//; <msg>   	( -- a )	 180:308:150		hidden
+//;	address of default F4 messages table; used if @warning < 0.
+//;	message table structure, 'count'byte includes the terminating <nul>:
+//;	 <msg> --> [ count1.b text1 0.b | ... | countN.b textN 0.b | -1.b -1.b ]
+//;	alterable cons; re {is}, {is<}, {to}, {>v}, {message}, {error}.
+//;	              ; { ' <msg> is< } restores kernel messages table address.
+	c bmsgb,"<msg>",douser,,,hidden
+	udefl(bmsgbu),msgt0
 //;
-//;	additional hi-level uvari, by dword disp may extend, up to PAGE_SIZE(4K), 
-//;	counting from uarea beginning, at <fperm> position = <docold>-32 = u0-48.
-//;	a common method to getting the disp for a user variable which returns one 
-//;	of the above items, regardless of byte or dword compiled disp to UP, is
-//;	the reference to '(up)' the address of which represents zero displacement:
+//;
+//;	uarea may be extended to up to 700 cells, i.e. PAGE_SIZE (4K), indexed by
+//;	dword disp wrt (up), counting from uarea beginning, at <fperm> position 
+//;	= <docold>-32 = u0-48. getting the disp for a user variable which returns 
+//;	one of the above items, regardless of byte or dword compiled disp to UP:
 //;		{ (argp) (up) - 4+ ucons envp }
-//;
-//;	size of uarea may be extended with 'mremap' by -ve page-aligned address 
-//;	@u0 and size=@<uvsizu>, at address { u0 4+ } after which the content of 
-//;	'up' should be set to the returned address.
-//;	to preventing intermediate access to an uvari the base address of which 
-//;	was just changed, copy uvari to a newly assigned 'mmapa' block, link to 
-//;	that area, copy and, 'munmap' the previously valid block, afterwards.
+// ;
+// ;	size of uarea may be extended with 'mremap' by -ve page-aligned address 
+// ;	@u0 and size=@<uvsizu>, at address { u0 4+ } after which the content of 
+// ;	'up' should be set to the returned address.
+// ;	to preventing intermediate access to an uvari the base address of which 
+// ;	was just changed, copy uvari to a newly assigned 'mmapa' block, link to 
+// ;	that area, copy and, 'munmap' the previously valid block, afterwards.
 //;
 //;
 //; ---- cons & vari ----
@@ -2842,7 +2859,7 @@ _ti	c triad,"triad",Xtriad
 //;
 //; open   	( a n ch -- ch|er )		(p)(s)
 //;	close channel ch, open file or device by <nul>-terminated name at a+1 
-//;	w. default permissions & open-mode n -re- {r/o}, {w/o}, {w/r}, {cre}; 
+//;	w. default permissions & open-mode n; 
 //;		other open access flags re lx source, <include/asm/fcntl.h>,
 //;		file permission bits defined in lx, <include/linux/stat.h>.
 //;	initiates cdt of channel ch, ret channel no. ch or, -ve error code.
@@ -2853,35 +2870,48 @@ _ti	c triad,"triad",Xtriad
 //;		open mode	cdt+12  mode flags from 'open'
 //;		file ptr	cdt+24  double
 //;		file size	cdt+36	double
-//;	re {bchan}, {cdt}, {ch-id}, {chan}, {close}, {new-chan}, {mmapf}, {w4f}
+//;	re {bchan}, {cdt}, {ch-id}, {chan}, {close}, {new-chan}, {mmapf}, {w4f};
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}; {fperm}.
+//;	re Linux source, file:/usr/src/linux/include/asm/fcntl.h
 	c open,"open",Xopen
 //;
 //; r/o		( -- n )			(bcons)
 //;	file open mode flag, linux cons 'O_RDONLY'.
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
 	c rbyo,"r/o",dobconstant
 	.byte O_RDONLY
 //;
 //; w/o		( -- n )			(bcons)
 //;	file open mode flag, linux cons 'O_WRONLY'.
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
 	c wbyo,"w/o",dobconstant
 	.byte O_WRONLY
 //;
 //; w/r		( -- n )			(bcons)
 //;	file open mode flag, linux cons 'O_RDWR'.
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
 	c wbyr,"w/r",dobconstant
 	.byte O_RDWR
 //;
-//; dir		( n1 -- n2 )			(p)
-//;	OR directory creation flag to open mode, linux cons 'O_DIRECTORY'
-	c dir,"dir",Xdir
-//;
 //; app		( n1 -- n2 )			(p)
 //;	OR write-append mode flag to open mode, linux cons 'O_APPEND'
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
 	c app,"app",Xapp
 //;
 //; cre		( n1 -- n2 )			(p)
 //;	OR file creation flag to open mode, linux cons 'O_CREAT|O_TRUNC'
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
 	c cre,"cre",Xcre
+//;
+//; dir		( n1 -- n2 )			(p)
+//;	OR directory creation flag to open mode, linux cons 'O_DIRECTORY'
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
+	c dir,"dir",Xdir
+//;
+//; lfi		( n1 -- n2 )			(p)
+//;	'largefile' flag ORed to open mode, linux cons 'O_LARGEFILE'
+//;	re {w/r}, {w/o}, {r/o}, {app}, {cre}, {dir}, {lfi}
+	c lfi,"lfi",Xlfi
 //;
 //; close  	( ch -- flg )			(p)(s)
 //;	close channel ch, ret false flg or, +ve fd if duplicate channel exists.
@@ -3136,12 +3166,12 @@ _ck	c chky,"ch-key",Xchkey,,,hidden
 //; ptype     	( a u -- )			(p)
 //;	transmit u characters (bytes) from address a to stdout, 
 //;	substituting non-printing chars by "_" underline char.
-//;	drop args & ret if either, a or u is zero.
+//;	drop args & ret if either, a or u is zero. re {print}, {printing?}.
 //;	u limited to 64K. for longer text re "writef" which is not limited.
 	c ptype,"ptype",Xptype
 //;
 //; type     	( a u -- )			(u)
-//;	transmit u characters (bytes) from address a to stdout.
+//;	transmit u characters (bytes) from address a to stdout. re {print}.
 //;	drop args & ret if either, a or u is zero. deferred, dft "[type]", 
 //;	can be altered w. 'is' or, by disp @pfa wrt address of (up).
 	c type,"type",doudfer
@@ -3154,6 +3184,8 @@ _ck	c chky,"ch-key",Xchkey,,,hidden
 //; emit     	( n -- )			(u)
 //;	transmit multi-byte char, l.s. byte 1st, from cell n to stdout.
 //;	can be altered w. 'is' or, by disp @pfa wrt address of (up).
+//;	re {emitm}, {out}
+//;	vt-control: {bel}, {bs}, {cr}, {si}, {so}, {space}, {tab}
 	c emit,"emit",doudfer
 	udefl(emitu),bemitb+cfa2pfa
 //;
@@ -3184,6 +3216,7 @@ _ck	c chky,"ch-key",Xchkey,,,hidden
 //;
 //; cr     	( -- )				(p)((u))
 //;	{emit} the new-line code (carriage return & line feed, linux: ascii 10).
+//;	conditional execution re {-cr}
 	c cr,"cr",Xcr
 //;
 //; space  	( -- )				(p)((u))
@@ -3217,15 +3250,15 @@ _ck	c chky,"ch-key",Xchkey,,,hidden
 //;
 //; b@		( a -- n )		n.i.	(d)	hidden
 //;	fetch multi-byte char n from address a.
-//;	currently xec {0=}, vector left to suitable, later definition.
-//;	can be altered w. {is} or, by disp @pfa wrt @(vb).
+//;	provisional for unicode characters decoding, currently xec {0=}.
+//;	can be altered w. {is} or, by disp @pfa wrt @(vb). re {b!}
 	c bfetch,"b@",domdfer,,,hidden
 	.long bfetchv-D,zeq+cfa2pfa
 //;
 //; b!		( n a -- )			(d)	hidden
 //;	store multi-byte char n to address a. dft {[b!]} which stores 
 //;	the least significant bytes, until <nul>, of multi-byte char n.
-//;	can be altered w. {is} or, by disp @pfa wrt @(vb). re {bcount}.
+//;	can be altered w. {is} or, by disp @pfa wrt @(vb). re {bcount}. re {b@}.
 	c bstore,"b!",domdfer,,,hidden
 	.long bstorev-D,bbstoreq+cfa2pfa
 //;

@@ -101,6 +101,9 @@ cvemit:	relcdt rstdout,edx//;fetch reloc cdt of stdout to reg ecx
 	spop
 	ret
 // ( n1 -- n2 ) ; open-flag modifier
+Xlfi:	orl $O_LARGEFILE,TS
+	NX
+// ( n1 -- n2 ) ; open-flag modifier
 Xapp:	orl $O_APPEND,TS
 	NX
 // ( n1 -- n2 ) ; open-flag modifier
@@ -1097,24 +1100,20 @@ Xfposa:	lea cfposa,ecx
 	jmp 2b
 // ; in: TS=fpos ebx=fd ecx=xx (esp)=rel fpos edx=cdt
 // ;out: TS=fpos|er ebx=fd ecx=disp edx=edx
-cfpose:////	pushl ecx	//<Cflen)
-	pushl $SEEK_END
+cfpose:	pushl $SEEK_END	//<Cflen)
 	jmp cfposn
 // ; in: TS=fpos ebx=fd ecx=xx (esp)=rel fpos edx=cdt
 // ;out: TS=fpos|er ebx=fd ecx=disp edx=edx eflags
-cfposa:////	pushl ecx	//<Crbyw,Cflen)
-	pushl $SEEK_SET
+cfposa:	pushl $SEEK_SET	//<Crbyw,Cflen)
 	jmp cfposn
 // ; in: TS=disp ebx=fd ecx=xx edx=cdt
 // ;out: TS=fpos|er ebx=fd ecx=ecx edx=edx eflags; if w.o. error fposn stored to cdt
-cfposr:////	pushl ecx	//<Cfposre,Cflen)
-	pushl $SEEK_CUR
+cfposr:	pushl $SEEK_CUR	//<Cfposre,Cflen)
 cfposn:	movl (esp),ecx	//<cfpose,cfposa)
 	movl ebx,(esp)	//;save fd for subsequent calls by <Cflen>
 	pushl edx	//<cfposa,cfpose)
 	testl $consflags,cdtref(tyfl)(edx)
-////	jnz 2f		//;?;not applicable to tty &c
-    jnz 9f		//;?;not applicable to tty &c
+	jnz 9f		//;?;not applicable to tty &c
 	addl ebx,ebx
 	jno 1f		//;?;not mmapped
 	testl $mmapc,cdtref(tyfl)(edx)
@@ -1143,7 +1142,6 @@ cfposn:	movl (esp),ecx	//<cfpose,cfposa)
 	movl TS,cdtref(fpos)(edx)
 2:	popl edx
 	popl ebx	//;fd
-////popl ecx
 	ret
 // ; file ptr may point beyond eof, w.o. error but, may not result to -ve posn
 3:	cmpl $SEEK_CUR,ecx	//1

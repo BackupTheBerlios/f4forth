@@ -1106,16 +1106,6 @@ Xconsp:	pushl NXL
 	call Csemico
 docplus:addl (W),TS	//<+origin); (sonstnix)
 	NX
-.ifne 0 // unsinn - { 0 variable -4 allot } bewirkt dasselbe
-// ( -- )(X -- n ); 'vref' non-alterable disp wrt vmem base
-Xvref:	pushl NXL
-	call Cconstant
-	call Csemico
-dovref:	spush
-	movl (W),TS
-	addl uref(vbotu),TS
-	NX
-.endif
 // ccc( -- )(X: -- ); place-holder for by 'does>' redirected cfa
 Xlessbuilds:
 	pushl NXL
@@ -1181,21 +1171,21 @@ cpret:	.long .+4
 	popl IP
 	ret
 .ifne _c4_
-// ( xx -- xx ) ;W=pfa to execute
+// ( xx -- xx ) ;W=pfa of colon-definition to execute
 Cdcol:	pushl IP
 	leal cpret,IP
 	jmp docolon
-// ( xx -- xx ) ;W=cfa to execute
+// ( xx -- xx ) ;W=cfa of primitive word to execute
 Cprim:	pushl IP
 	leal cpret,IP
 	jmp *W
 .endif			// ----
-// ( xx -- xx ) ;W=pfa to execute
+// ( xx -- xx ) ;W=pfa of memory-deferred word to execute
 Xmdfer:	pushl NXL	//<Xwlq)
 Cmdfer:	pushl IP
 	leal cpret,IP
 	jmp domdfer
-// ( xx -- xx ) ;W=pfa to execute
+// ( xx -- xx ) ;W=pfa of user-deferred word to execute
 Cudfer:	pushl IP	//;by '[inter]', 'type', 'emit', 'key', '?key')
 	leal cpret,IP
 	jmp doudfer

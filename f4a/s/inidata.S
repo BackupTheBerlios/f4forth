@@ -34,7 +34,6 @@ lfD:// ; voc-link ref base address
 //; search order can (mostly) be 'sealed' with all 2nd-ary voc items zeroed.
 //; "root" and "local" can't be excluded other than by header block modification.
 // ;             vnfa      2nd, flg,link
-.ifne 1
 	vocblock root,     forth,0,0	// ; voc-link base ref at <lfD>
 	vocblock forth,    editor	// ; ! editor after forth !
 	vocblock editor,   hidden
@@ -42,15 +41,6 @@ lfD:// ; voc-link ref base address
 	vocblock linux,	   assembler
 	vocblock assembler,forth
 	vocblock local,    D		// ; 'local' w.o. 2nd-ary context
-.else
-	vocblock root,     forth,0,0	// ; voc-link base ref at <lfD>
-	vocblock forth,    hidden
-	vocblock hidden,   linux
-	vocblock assembler,forth
-	vocblock linux,	   editor
-	vocblock editor,   assembler
-	vocblock local,    D		// ; 'local' w.o. 2nd-ary context
-.endif
 //;
 //; pre-set uvari <origino> .. <originendo> - in sync w. primary uvari.
 // ; as-macroes with faulty parameter pssing which, falsely evaluate
@@ -74,15 +64,15 @@ uvariv:
 		uiosiz, 0x7fffffff,d_pchr,0,   (originendu-uuseru-0x80),\
 		'\\',0,      uvasiz, 0,    -1,     (task+4),udbvec, 0,      0,  7,  -1,\
 		bemitb,btypeb,bqkeyb,bkeyb,bexpectb,abort,patxyq,pxyq,utsz,\
-		(DE-D),0,     0,     bel,   pbbip,0,     0,     pmaxyq,berrb
-uvariev:
+		(DE-D),0,     0,     bel,   pbbip,0,     0,     pmaxyq,berrb, msgt0
+uvariev:                                                                    
 #;   defuvari o, coo=0,wmo=0,u0=0,s0=0,r0=0,tib=0,width=0,warning=0,fence=0,dp=0,vocl=0,blk=0,tin=0,out=0,\
 #;	        scr=0,offset=0,context=0,current=0,state=0,base=0,dpl=0,fld=0,csp=0,rsharp=0,hld=0,iquit=0,\
 #;		dcbot=0,dcsiz=0,psbot=0,pssiz=0,bits=0,                ltop=0,last=0,wsz=0,uvsiz=0,iobot=0,\
 #;		iosiz=0,timo=0,    asci=0,dbg=0,upv=0,\
 #;		es=0,vabot=0,vasiz=0,inu=0,dbtop=0,dbbot=0, dbvec=0,dbflg=0,p=0,i=0,cmo=0,\
 #;		emit=0,type=0,qkey=0,key=0,expect=0,abt=0,atxy=0,xy=0,tsz=0,\
-#;		vptr=0,puop=0,pflp=0,palp=0,bbi=0,pcsp=0,pcrp=0,maxy=0,berrb=0
+#;		vptr=0,puop=0,pflp=0,palp=0,bbi=0,pcsp=0,pcrp=0,maxy=0,berrb=0,bmsgb=msgt0
 
 //;	end of vari copied to user area
 //;
@@ -120,11 +110,12 @@ sa_qit: sigh(sigqit)
 //; <cdtblock>
 //;	cdtv:
     cdtblock v
-//; system vari, deferred defaults
+//; sysdef: system vari, deferred defaults
+//;	tabelle beginnt bei { chmax cdt cdt-len + }, mit { cdt 0 cdt - constant cdt-len }
 .ifeq _nv_
 .set bbnumberb,0
 .endif
-//; sysdef   winsz ,[ok],abort,<nul>,c/l,b/buf ,b@ ,b!      ,edit ,[-->],[\],message,#!,[see],
+//; sysdef v,winsz ,[ok],abort,<nul>,c/l,b/buf ,b@ ,b!      ,edit ,[-->],[\],message,#!,[see],
     sysdef v,wminsz,bokb,abort,xx,cbyln,bbybufn,zeq,bbstoreq,ledit,bddgb,bbslb,mesg,bhbb,0\
 	    ,0  ,bbnumberb,16,0   ,sem,0    ,0   ,blistb
 //;	     [n],[number],.sn,[id],;  ,[+to],[is],[list]
@@ -365,8 +356,7 @@ cmuls:	.ascii "kKmMgGtTpP%%"
 cmule:
 // -- zero length string, <nul>-variable, ref to internal message strings
 nullc:	.long 0
-// -- standard 4th messages
-msgt:
+// -- standard 4th messages by ptr @<msg>, displayed if @warning < 0
 msgt0:	sdatac "unknown word",0
 msgt1:	sdatac "dstack empty",0
 msgt2:	sdatac "dictionary full",0
@@ -382,7 +372,7 @@ msgt8:	sdatac "disc access error",0
 	sdatac ,0
 	sdatac ,0
 	sdatac ,0
-	sdatac ,0
+msgt15:	sdatac "F4 Forth (C) Berlin 2004 h-peter recktenwald",0
 	sdatac ,0
 msgt17:	sdatac "use only while compiling",0
 msgt18:	sdatac "use only while executing",0
@@ -398,7 +388,8 @@ msgt24:	sdatac "declare vocabulary",0
 	sdatac ,0
 	sdatac ,0
 	sdatac ,0
-	sdatac ,0
+msgt31:	sdatac ,0
+	.byte -1,-1
 // --
 	.align page_size,-1
 // :DAS: <.align> :HIER: vermeidet segv-s ab gewisser (ja, welcher denn???) codebereichsgroesze...
