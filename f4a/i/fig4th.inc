@@ -529,9 +529,16 @@ cdt\o:
 	.byte L\@-.-1
 	.ascii "\s"
 .ifge \b
-	.byte \b
-.endif
+.ifeq \b
 L\@:
+.endif
+	.byte \b
+.ifne \b
+L\@:
+.endif
+.else
+L\@:
+.endif
 .endm
 //;
 // =========================================================================== //

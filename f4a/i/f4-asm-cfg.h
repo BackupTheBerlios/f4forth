@@ -25,7 +25,7 @@
 //;#define _oh_     1	   	cpl headers for optimizing {literal} oprs
 #define _tf_    1
 //;#define _tf_    1	   	'tdb' mode w. eflags display
-#define _i3_    0
+#define _i3_    1
 //;#define _i3_    0		'int3'  debugger breakpt 4th word
 #define _cy_	  0
 //;#define _cy_	  0		debug: include int $3 instr-s and intial waiting loop

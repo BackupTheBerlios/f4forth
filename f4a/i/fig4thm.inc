@@ -56,12 +56,12 @@ mesg\o:	.long	\mesg
 hb\o:	.long	\hb
 see\o:	.long	\see
 bnumberb\o: .long \bnumberb
-dotsn\o:.long \dotsn
-bidb\o:	.long \id
-semiv\o:.long \semi
-bptob\o:.long \pto
-bisb\o:	.long \is
-list\o:	.long \list
+dotsn\o:.long	\dotsn
+bidb\o:	.long	\id
+semiv\o:.long	\semi
+bptob\o:.long	\pto
+bisb\o:	.long	\is
+list\o:	.long	\list
 .endm
 	.struct 0
 	sysdef s
@@ -106,7 +106,7 @@ sigho:	.long sighdv
 	bits=0,ltop=0,last=0,wsz=0,uvsiz=0,iobot=0,iosiz=0,timo=0,asci=0,dbg=0,upv=0,\
 	es=0,vabot=0,vasiz=0,inu=0,dbtop=0,dbbot=0,dbvec=0,dbflg=0,p=0,i=0,cmo=0,\
 	emit=0,type=0,qkey=0,key=0,expect=0,abt=0,atxy=0,xy=0,tsz=0,vptr=0,puop=0,\
-	pflp=0,palp=0,bbi=0,pcsp=0,pcrp=0,maxy=0,err=0
+	pflp=0,palp=0,bbi=0,pcsp=0,pcrp=0,maxy=0,err=0,msg=0
 origin\o:
 // -------. byte-addressable <--
 cold\o:		.long \coo
@@ -187,6 +187,7 @@ pcrp\o:		.long \pcrp
 col\o:		.long 0
 row\o:		.long 0
 berrb\o:	.long \err
+bmsgb\o:	.long \msg
 originend\o:
 .endm
 	.struct 0
