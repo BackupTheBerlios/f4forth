@@ -132,7 +132,7 @@ ${cg} ${fgroup} ./${t}/d 2>/dev/null||:
 #${SU} ${cp} ${d}/${t}.version.jpg ${d}/d/${t}.version.jpg
 #${SU} ${cp} ${d}/${t}.version.txt ${d}/d/${t}.version		
 
-echo -e " ${a} #  $(date +%Y-%m-%d)\n\n"|${CV} -monochrome -negate -size 320x30 -font lucida -trim text:- ${d}/${t}.version.jpg
+echo -e " ${r} #  $(date +%Y-%m-%d)\n\n"|${CV} -monochrome -negate -size 320x30 -font lucida -trim text:- ${d}/${t}.version.jpg
 ${CV} -trim ${d}/${t}.version.jpg	${d}/d/${t}.version.jpg
 ${CV} -trim ${d}/${t}.version.jpg	${d}/d/${t}.version
 
@@ -158,13 +158,18 @@ ${gz} ./${t}/d/changelog > ./${t}-changes.txt.gz			2>/dev/null||:
     ${CP} ${a}				/hpg5/ 				2>/dev/null||:
     ${SU} ${cp} ${a}			/hpg5/up-ib/${t}.src.tar.bz2 	2>/dev/null||:
     gz ./${t}/f f4ans.scr
+    gz ./${t}/f f4a.scr
+    gz ./${t}/f f4b.scr
+    gz ./${t}/f f4c.scr
     gz ./${t}/f f4e.scr
+    gz ./${t}/f f4eh.scr
     gz ./${t}/f f4f.scr
     gz ./${t}/f figed.scr
     gz ./${t}/f f4m.scr
     gz ./${t}/f f4o.scr
     gz ./${t}/f f4p.scr
     gz ./${t}/f f4x.scr
+    gz ./${t}/f f4z.scr
     gz ./${t}/d glossary  ${t}gls
     gz ./${t}/d changelog ${t}-changes.txt
     ${CG} -R ${fgroup} /hpg5/ 2>/dev/null||:
