@@ -9,7 +9,7 @@
 
 // =========================================================================== //
 #ifndef F4ASMCFG_H
-#include <f4-asm-cfg.h>
+#include "f4-asm-cfg.h"
 #endif
 //;
 //; -----------------------------------------------------------------------------
@@ -633,34 +633,41 @@
 // ==============================================================================
 //	conditional out-commenting; set from #define-d constants, re above
 // ==============================================================================
-#if _mx_		//; _mx_ implies _dx_
-#undef  _dx_
+
+// asm cpl vari which imply others:
+
+#ifndef _dx_
+
+#if (_bn_|_mx_|_rx_)	//; either one implies _dx_
 #define _dx_	12
 #endif
+
+#endif
 // ------------------------------------------------------------------------------
-#if _ld_		//; _ld_ implies _lx_
+#ifndef _lx_
+
+#if (_ld_|_rx_)		//; either one implies _lx_
 #undef  _lx_
 #define _lx_	12
 #endif
+
+#endif
 // ------------------------------------------------------------------------------
 #if _rx_		//; _rx_ implies _fx_ _dx_, _ld_, _lx_, _mx_, _sq_, _sb_
-#undef  _dx_
-#define _dx_	11
 #undef  _fx_
-#define _fx_	11
 #undef  _ld_
-#define _ld_	11
-#undef  _lx_
-#define _lx_	11
 #undef  _mx_
-#define _mx_	11
 #undef  _sq_
-#define _sq_	11
 #undef  _sb_
-#define _sb_   11
+#define _fx_	11
+#define _ld_	11
+#define _mx_	11
+#define _sq_	11
+#define _sb_	11
 #endif
 // ==============================================================================
 
+// asm cpl vari
 #if _0a_
 #define _0a
 #else
@@ -677,6 +684,12 @@
 #define _al
 #else
 #define _al	#
+#endif
+
+#if _bn_
+#define _bn
+#else
+#define _bn	#
 #endif
 
 #if _ck_
@@ -835,11 +848,21 @@
 #define _dx	#
 #endif
 
+// asm cpl vari which require others:
+
+#undef _gs
+#if (_gs_&_dx_)
+#define _gs
+#else
+#define _gs	#
+#endif
+
 #if (_rx_|_dx_|_sb_)
 #define _rdx
 #else
 #define _rdx	#
 #endif
+
 //;
 #endif /* FIG4TH_H */
 // =========================================================================== //
